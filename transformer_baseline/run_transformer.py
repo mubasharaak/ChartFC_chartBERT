@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import f1_score
 
-import configs.config as CONFIG
+import configs.config_mcb as CONFIG
 from utils_data import build_dataloaders
 
 parser = argparse.ArgumentParser()
@@ -165,8 +165,8 @@ def main():
                 'ques2idx': train_data.dataset.txt2idx,
                 'maxlen': train_data.dataset.maxlen}
     json.dump(lut_dict, open(os.path.join(EXPT_DIR, 'LUT.json'), 'w'))
-    shutil.copy(f'/scratch/users/k20116188/prefil/configs/config.py',
-                os.path.join(EXPT_DIR, 'config.py'))
+    shutil.copy(f'/scratch/users/k20116188/prefil/configs/config_mcb.py',
+                os.path.join(EXPT_DIR, 'config_mcb.py'))
 
     model = CONFIG.model(n1, 1, CONFIG)
     print("Model Overview: ")

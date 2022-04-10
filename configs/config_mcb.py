@@ -1,7 +1,7 @@
 import torch
 from torchvision import transforms
 
-import chartfc_baseline
+import model
 
 train_file = dict()
 train_file['ChartFC'] = 'train_barplot_seaborn_imgtext_tesseract.json'
@@ -28,7 +28,7 @@ transform_combo_test['ChartFC'] = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-model = chartfc_baseline.ChartFCBaseline
+model = model.ChartFCBaseline
 root = 'data'  # This will be overwritten by command line argument
 dataset = 'ChartFC'  # Should be defined above in the datastore section
 data_subset = 1.0  # Random Fraction of data to use for training

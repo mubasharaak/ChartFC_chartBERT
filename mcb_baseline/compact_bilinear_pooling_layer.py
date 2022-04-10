@@ -1,8 +1,9 @@
+import numpy as np
 import torch
+import torch.fft as afft
 from torch import nn
 from torch.autograd import Variable
-import numpy as np
-import torch.fft as afft
+
 
 # (c) https://github.com/DeepInsight-PCALab/CompactBilinearPooling-Pytorch/blob/master/CompactBilinearPooling.py
 

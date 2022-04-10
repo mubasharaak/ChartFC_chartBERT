@@ -3,12 +3,8 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pack_padded_sequence
 import torchvision.models as models
-import numpy as np
-
-from torch.autograd import Variable
-import torch.fft as afft
+from torch.nn.utils.rnn import pack_padded_sequence
 
 from compact_bilinear_pooling_layer import CompactBilinearPooling
 
