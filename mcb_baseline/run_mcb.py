@@ -47,14 +47,18 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
         q = txt.to("cuda")
         i = img.to("cuda")
         a = label.to("cuda") # answer as string
-        # ocr = ocr.to("cuda")
         p = model(i, q, ql)
 
         loss = criterion(p, a)
+        optimizer.zero_grad()
         loss.backward()
-        if (batch_idx + 1) % accumulation_steps == 0:
-            optimizer.step()
-            optimizer.zero_grad()
+        optimizer.step()
+
+        # loss = criterion(p, a)
+        # loss.backward()
+        # if (batch_idx + 1) % accumulation_steps == 0:
+        #     optimizer.step()
+        #     optimizer.zero_grad()
 
         p_scale = torch.sigmoid(p)
         pred_class = p_scale >= 0.5
@@ -75,7 +79,7 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
         )
 
         # validate after steps = 250
-        if batch_idx % 100 == 0 and batch_idx != 0:
+        if batch_idx % 400 == 0 and batch_idx != 0:
             print(f'\nTrain Accuracy for Steps {batch_idx}: {correct / total}')
             print(f'{train_loader.dataset.split} F1 macro for Steps {batch_idx}: {f1_result_macro}\n')
 

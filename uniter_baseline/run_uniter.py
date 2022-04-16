@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import f1_score
 
-import configs.config_mcb as CONFIG
-from utils_data import build_dataloaders
+import configs.config_uniter as CONFIG
+from utils_data_uniter import build_dataloaders
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_root', default='data', type=str)
@@ -42,18 +42,16 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
     total_loss = 0
     accumulation_steps = 2
 
-    for batch_idx, (txt, label, img, qid, ql) in enumerate(train_loader):
-        q = txt.to("cuda")
+    for batch_idx, (txt, label, img, qid, ql, ocr, ocrl) in enumerate(train_loader):
         i = img.to("cuda")
         a = label.to("cuda") # answer as string
-        # ocr = ocr.to("cuda")
-        p = model(i, q, ql)
+        p = model(i, txt, ql, ocr, ocrl)
 
         loss = criterion(p, a)
+        optimizer.zero_grad()
         loss.backward()
-        if (batch_idx + 1) % accumulation_steps == 0:
-            optimizer.step()
-            optimizer.zero_grad()
+        # nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+        optimizer.step()
 
         p_scale = torch.sigmoid(p)
         pred_class = p_scale >= 0.5
@@ -74,7 +72,7 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
         )
 
         # validate after steps = 250
-        if batch_idx % 100 == 0 and batch_idx != 0:
+        if batch_idx % 400 == 0 and batch_idx != 0:
             print(f'\nTrain Accuracy for Steps {batch_idx}: {correct / total}')
             print(f'{train_loader.dataset.split} F1 macro for Steps {batch_idx}: {f1_result_macro}\n')
 
@@ -95,12 +93,10 @@ def predict(model, dataloaders, epoch, steps = "total"):
         total = 0
         results = dict()
         with torch.no_grad():
-            for q, a, i, qid, ql, in data:
-                q = q.to("cuda")
+            for q, a, i, qid, ql, ocr, ocrl in data:
                 i = i.to("cuda")  # image
                 a = a.to("cuda")  # answer as string
-                # ocr = ocr.to("cuda")
-                p = model(i, q, ql)
+                p = model(i, q, ql, ocr, ocrl)
                 _, idx = p.max(dim=1)
 
                 p_scale = torch.sigmoid(p)
@@ -148,7 +144,7 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
                 'optim_state_dict': optimizer.state_dict(),
                 'epoch': epoch,
                 'lr': optimizer.param_groups[0]['lr']}
-        torch.save(data, curr_epoch_path)
+        # torch.save(data, curr_epoch_path)
         torch.save(data, latest_path)
 
         if epoch % config.test_interval == 0 or epoch >= config.test_every_epoch_after:
@@ -165,8 +161,8 @@ def main():
                 'ques2idx': train_data.dataset.txt2idx,
                 'maxlen': train_data.dataset.maxlen}
     json.dump(lut_dict, open(os.path.join(EXPT_DIR, 'LUT.json'), 'w'))
-    shutil.copy(f'/scratch/users/k20116188/prefil/configs/config_mcb.py',
-                os.path.join(EXPT_DIR, 'config_mcb.py'))
+    shutil.copy(f'/scratch/users/k20116188/prefil/configs/config_uniter.py',
+                os.path.join(EXPT_DIR, 'config_uniter.py'))
 
     model = CONFIG.model(n1, 1, CONFIG)
     print("Model Overview: ")

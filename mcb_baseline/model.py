@@ -14,7 +14,7 @@ class TextEncoder(nn.Module):
         super(TextEncoder, self).__init__()
         self.embedding = nn.Embedding(token_count, config.txt_embedding_dim)
         self.lstm = nn.LSTM(input_size=config.txt_embedding_dim, hidden_size=config.lstm_dim, num_layers=2)
-        self.drop = nn.Dropout() # MCB
+        self.drop = nn.Dropout(0.3) # MCB
 
     def forward(self, txt, txt_len):
         embedding = self.embedding(txt)
@@ -120,7 +120,7 @@ class MCBPooling(nn.Module):
         # classifier
         self.classifier = nn.Sequential(
             nn.Linear(mcb_out_dim, 1),
-            nn.Dropout(),
+            # nn.Dropout(),
             # nn.ReLU(inplace=True),
         )
 
