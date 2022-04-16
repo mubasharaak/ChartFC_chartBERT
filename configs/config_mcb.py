@@ -1,7 +1,7 @@
 import torch
 from torchvision import transforms
 
-import model
+import model_mcb as model
 
 train_file = dict()
 train_file['ChartFC'] = 'train_barplot_seaborn_imgtext_tesseract.json'
