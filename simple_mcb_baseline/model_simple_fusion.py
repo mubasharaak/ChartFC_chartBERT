@@ -103,72 +103,6 @@ class ConcatFusion(nn.Module):
         return mm_feat
 
 
-class MCBPooling(nn.Module):
-    def __init__(self, config=None):
-        super(MCBPooling, self).__init__()
-        mcb_out_dim = 16000
-        self.config = config
-        self.comp_layer1 = CompactBilinearPooling(config.fusion_out_dim, config.fusion_out_dim, mcb_out_dim, sum_pool=False)
-        self.conv1 = nn.Conv2d(mcb_out_dim, 512, kernel_size=1, stride=1, padding=0)
-        self.relu = nn.ReLU()
-
-        # weights
-        self.conv2 = nn.Conv2d(512, 1, kernel_size=1, stride=1, padding=0)
-
-        self.comp_layer2 = CompactBilinearPooling(config.fusion_out_dim, config.fusion_out_dim, mcb_out_dim, sum_pool=False)
-
-        # classifier
-        self.classifier = nn.Sequential(
-            nn.Linear(mcb_out_dim, 1),
-            # nn.Dropout(),
-            # nn.ReLU(inplace=True),
-        )
-
-    def forward(self, txt_feat, img_feat):
-        # L2 norm of img_feat
-        img_feat = torch.nn.functional.normalize(img_feat)
-
-        # reshape and tile txt_feat
-        bs, _, nw, nh = img_feat.shape
-        txt_feat = torch.unsqueeze(txt_feat, -1)
-        txt_feat = torch.unsqueeze(txt_feat, -1)
-        txt_tile = torch.tile(txt_feat, (int(self.config.img_dim/(self.config.lstm_dim*2)), nh, nw))
-
-        # 1st MCB
-        out = self.comp_layer1(txt_tile, img_feat)
-        out = out.permute(0, 3, 1, 2)
-        out = torch.sqrt(F.relu(out)) - torch.sqrt(F.relu(-out)) # todo square root
-        out = torch.nn.functional.normalize(out)
-
-        # weights
-        out = self.relu(self.conv1(out))
-        out = self.conv2(out)
-
-        out = out.reshape(-1, 1, nw * nh)
-        weights = nn.functional.softmax(out, dim=2)
-        weights = weights.reshape((-1, 1, nw, nh)) # or other way around nh, nw
-
-        # apply weights to image vector
-        bottom1_resh = img_feat.view(bs, nw * nh, -1)
-        weights = weights.view(bs, -1, 1)
-
-        res = torch.bmm(bottom1_resh.transpose(1, 2), weights)
-        res = res.squeeze(2)
-
-        # prepare data for 2nd MCB
-        res_unsqueezed = res.unsqueeze(-1).unsqueeze(-1)
-
-        # 2nd call of MCB
-        out2 = self.comp_layer2(res_unsqueezed, txt_feat)
-        out2 = out2.squeeze()
-        out2 = torch.sqrt(F.relu(out2)) - torch.sqrt(F.relu(-out2)) # square root
-        out2 = torch.nn.functional.normalize(out2)
-
-        # classifier
-        final_out = self.classifier(out2)
-        return final_out
-
-
 class RecurrentFusion(nn.Module):
     def __init__(self, num_bigru_units, feat_in):
         super(RecurrentFusion, self).__init__()
@@ -226,16 +160,14 @@ class ChartFCBaseline(nn.Module):
         self.img_encoder = torch.nn.Sequential(*list(models.resnet152().children())[:8]) #resnet :7 ?
         # self.img_encoder = torch.nn.Sequential(*list(models.vgg16().children())[0])
         # self.img_encoder.freeze() # freeze image encoder weights
-        self.mcb = MCBPooling(config)
-        # self.fusion = ConcatFusion(config)
-        # self.classifier = Classifier(num_classes, config)
+
+        self.fusion = ConcatFusion(config)
+        self.classifier = Classifier(num_classes, config)
 
     def forward(self, img, txt, txt_len):
         txt_feat = self.txt_encoder(txt, txt_len)
         # ocr_feat = self.txt_encoder(ocr, ocr_len)
         img_feat = self.img_encoder(img) # remove .features for own Image encoder or resnet
-
-        out = self.mcb(txt_feat, img_feat)
-        # mm_feat = self.fusion(txt_feat, img_feat)
-        # out = self.classifier(mm_feat)
+        mm_feat = self.fusion(txt_feat, img_feat)
+        out = self.classifier(mm_feat)
         return out
