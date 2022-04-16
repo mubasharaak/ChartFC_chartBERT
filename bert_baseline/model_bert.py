@@ -1,12 +1,11 @@
-from collections import OrderedDict
-
 import torch
 import torch.nn as nn
 from apex.normalization.fused_layer_norm import FusedLayerNorm
 from layer import GELU
 from transformers import BertTokenizer, BertModel
-from simple_mcb_baseline.model_simple_fusion import ConcatFusion, MultiplicationFusion, RecurrentFusion
+
 from image_encoder import DenseNet
+from simple_mcb_baseline.model_simple_fusion import ConcatFusion, RecurrentFusion
 
 
 class BertEncoder(nn.Module):

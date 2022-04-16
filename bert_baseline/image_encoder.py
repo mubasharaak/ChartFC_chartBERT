@@ -1,7 +1,5 @@
 from collections import OrderedDict
 
-import matplotlib.pyplot as plt
-import torch
 from torch import nn
 from torchvision.models.densenet import _DenseBlock, _Transition
 

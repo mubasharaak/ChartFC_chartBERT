@@ -1,12 +1,12 @@
+import copy
 from collections import OrderedDict
 
-import copy
 import torch
 import torch.nn as nn
 import torchvision.models as models
-from layer import BertLayer, BertPooler, GELU
-from transformers import BertTokenizer, BertModel, BertForSequenceClassification
 from apex.normalization.fused_layer_norm import FusedLayerNorm
+from layer import BertLayer, BertPooler, GELU
+from transformers import BertTokenizer
 
 
 class BertEmbeddings(nn.Module):
