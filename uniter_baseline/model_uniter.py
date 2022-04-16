@@ -9,9 +9,9 @@ from transformers import BertTokenizer, BertModel, BertForSequenceClassification
 from apex.normalization.fused_layer_norm import FusedLayerNorm
 
 
-class TextEncoder(nn.Module):
+class BertEmbeddings(nn.Module):
     def __init__(self, config):
-        super(TextEncoder, self).__init__()
+        super(BertEmbeddings, self).__init__()
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-multilingual-cased")
 
         self.word_embeddings = nn.Embedding(len(self.tokenizer), config.hidden_size, padding_idx=0)
@@ -99,7 +99,7 @@ class ChartFCBaseline(nn.Module):
     def __init__(self, token_count, num_classes, config):
         super(ChartFCBaseline, self).__init__()
         # text encoder
-        self.txt_encoder = TextEncoder(config)
+        self.txt_encoder = BertEmbeddings(config)
 
         # image encoder
         self.img_encoder = models.alexnet()

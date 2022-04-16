@@ -43,9 +43,9 @@ class ImageEncoder(nn.Module):
         return img_feat
 
 
-class MutliplicationFusion(nn.Module):
+class MultiplicationFusion(nn.Module):
     def __init__(self, config=None):
-        super(MutliplicationFusion, self).__init__()
+        super(MultiplicationFusion, self).__init__()
         self.config = config
 
         # optionally try bn and a few conv2d and relu layers
@@ -77,9 +77,11 @@ class MutliplicationFusion(nn.Module):
 
 
 class ConcatFusion(nn.Module):
-    def __init__(self, config=None):
+    def __init__(self, config=None, img_dim=None):
         super(ConcatFusion, self).__init__()
-        self.fusion_dim = config.lstm_dim + config.img_dim
+        if not img_dim:
+            img_dim = config.img_dim
+        self.fusion_dim = config.lstm_dim + img_dim
         self.bn = nn.BatchNorm2d(self.fusion_dim)
 
         self.transform_convs = []
