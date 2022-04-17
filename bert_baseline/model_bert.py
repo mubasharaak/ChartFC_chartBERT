@@ -5,7 +5,8 @@ from layer import GELU
 from transformers import BertTokenizer, BertModel
 
 from image_encoder import DenseNet
-from simple_mcb_baseline.model_simple_fusion import ConcatFusion, RecurrentFusion
+# from simple_mcb_baseline.model_simple_fusion import ConcatFusion, RecurrentFusion
+from model_simple_fusion import ConcatFusion, RecurrentFusion
 
 
 class BertEncoder(nn.Module):
@@ -41,7 +42,7 @@ class Classifier(nn.Module):
         super(Classifier, self).__init__()
         self.config = config
         self.classifier = nn.Sequential(
-            nn.Linear(config.hidden_size, config.hidden_size * 2),
+            nn.Linear(config.hidden_size*4, config.hidden_size * 2),
             GELU(),
             FusedLayerNorm(config.hidden_size * 2, eps=1e-12),
             nn.Linear(config.hidden_size * 2, num_classes)
@@ -63,24 +64,26 @@ class ChartFCBaseline(nn.Module):
         img_dims = config.densenet_dim
 
         # fusion
-        self.bimodal_low = ConcatFusion(config, img_dim=img_dims[0])
-        self.bimodal_high = ConcatFusion(config, img_dim=img_dims[2])
+        self.bimodal_low = ConcatFusion(config, img_dim=img_dims[0], ocr_dim=config.text_dim)
+        self.bimodal_high = ConcatFusion(config, img_dim=img_dims[2], ocr_dim=config.text_dim)
         self.maxpool_low = nn.MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1)  # RGB to L
-        self.rf_high = RecurrentFusion(config.num_rf_out, config.num_bimodal_units)
+        self.rf_low = RecurrentFusion(config.num_rf_out, config.num_rf_out)
+        self.rf_high = RecurrentFusion(config.num_rf_out, config.num_rf_out)
 
         # classifier
-        self.classifier = Classifier(num_classes, config.num_rf_out * 4, config)
+        self.classifier = Classifier(num_classes, config)
 
-    def forward(self, img, txt):
+    def forward(self, img, txt, ocr):
         txt_feat = self.txt_encoder(txt)
+        ocr_feat = self.txt_encoder(ocr)
         feat_low, feat_mid, feat_high = self.img_encoder(img)
-
         feat_low = self.maxpool_low(feat_low)
-        bimodal_feat_low = self.bimodal_low(feat_low, txt_feat)
-        bimodal_feat_high = self.bimodal_high(feat_high, txt_feat)
 
+        bimodal_feat_low = self.bimodal_low(txt_feat, feat_low, ocr_feat)
+        bimodal_feat_high = self.bimodal_high(txt_feat, feat_high, ocr_feat)
         bimodal_feat_low = self.rf_low(bimodal_feat_low)
         bimodal_feat_high = self.rf_high(bimodal_feat_high)
+
         final_feat = torch.cat([bimodal_feat_low, bimodal_feat_high], dim=1)
 
         out = self.classifier(final_feat)

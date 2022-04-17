@@ -13,7 +13,7 @@ class TextEncoder(nn.Module):
     def __init__(self, token_count=None, config=None):
         super(TextEncoder, self).__init__()
         self.embedding = nn.Embedding(token_count, config.txt_embedding_dim)
-        self.lstm = nn.LSTM(input_size=config.txt_embedding_dim, hidden_size=config.lstm_dim, num_layers=2)
+        self.lstm = nn.LSTM(input_size=config.txt_embedding_dim, hidden_size=config.text_dim, num_layers=2)
         self.drop = nn.Dropout(0.3) # MCB
 
     def forward(self, txt, txt_len):
@@ -72,7 +72,7 @@ class MCBPooling(nn.Module):
         bs, _, nw, nh = img_feat.shape
         txt_feat = torch.unsqueeze(txt_feat, -1)
         txt_feat = torch.unsqueeze(txt_feat, -1)
-        txt_tile = torch.tile(txt_feat, (int(self.config.img_dim/(self.config.lstm_dim*2)), nh, nw))
+        txt_tile = torch.tile(txt_feat, (int(self.config.img_dim/(self.config.text_dim*2)), nh, nw))
 
         # 1st MCB
         out = self.comp_layer1(txt_tile, img_feat)

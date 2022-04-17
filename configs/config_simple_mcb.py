@@ -44,7 +44,7 @@ lut_location = ''  # When training, LUT for question and answer token to idx is 
 
 # sizes
 txt_embedding_dim = 32
-lstm_dim = 1024
+text_dim = 1024
 img_dim = 2048
 fusion_out_dim = 2048
 

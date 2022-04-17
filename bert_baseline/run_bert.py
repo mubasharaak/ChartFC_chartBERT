@@ -5,8 +5,7 @@ import shutil
 import sys
 import torch
 import torch.nn as nn
-from sklearn.metrics import f1_score
-
+from sklearn.metrics import f1_score, average_precision_score, recall_score
 import configs.config_bert as CONFIG
 from utils_data_bert import build_dataloaders
 
@@ -14,7 +13,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_root', default='data', type=str)
 parser.add_argument('--lr', type=str)
 args = parser.parse_args()
-EXPT_DIR = os.path.join(args.data_root, 'experiments', "ChartFC")
+EXPT_DIR = os.path.join(args.data_root, 'experiments', "ChartFC_8083")
 CONFIG.root = args.data_root
 LEARNING_RATE = float(args.lr)
 
@@ -45,7 +44,7 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
     for batch_idx, (txt, label, img, qid, ql, ocr, ocrl) in enumerate(train_loader):
         i = img.to("cuda")
         a = label.to("cuda") # answer as string
-        p = model(i, txt, ql, ocr, ocrl)
+        p = model(i, txt, ocr)
 
         loss = criterion(p, a)
         optimizer.zero_grad()
@@ -71,14 +70,22 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
             f', Loss: {total_loss / total}, Learning Rate: {[param_group["lr"] for param_group in optimizer.param_groups]}'
         )
 
-        # validate after steps = 250
-        if batch_idx % 400 == 0 and batch_idx != 0:
+        if batch_idx % 360 == 0 and batch_idx != 0:
             print(f'\nTrain Accuracy for Steps {batch_idx}: {correct / total}')
             print(f'{train_loader.dataset.split} F1 macro for Steps {batch_idx}: {f1_result_macro}\n')
 
             predict(model, val_loaders, epoch, steps=batch_idx)
             predict(model, test_loaders, epoch, steps=batch_idx)
             model.train()
+
+            curr_epoch_path = os.path.join(EXPT_DIR, str(epoch + 1) + '_400.pth')
+            latest_path = os.path.join(EXPT_DIR, 'latest_400.pth')
+            data = {'model_state_dict': model.state_dict(),
+                    'optim_state_dict': optimizer.state_dict(),
+                    'epoch': epoch,
+                    'lr': optimizer.param_groups[0]['lr']}
+            torch.save(data, curr_epoch_path)
+            torch.save(data, latest_path)
 
     print(f'\nTrain Accuracy for Epoch {epoch + 1}: {correct / total}')
     print(f'{train_loader.dataset.split} F1 macro for Epoch {epoch + 1}: {f1_result_macro}\n')
@@ -96,7 +103,7 @@ def predict(model, dataloaders, epoch, steps = "total"):
             for q, a, i, qid, ql, ocr, ocrl in data:
                 i = i.to("cuda")  # image
                 a = a.to("cuda")  # answer as string
-                p = model(i, q, ql, ocr, ocrl)
+                p = model(i, q, ocr)
                 _, idx = p.max(dim=1)
 
                 p_scale = torch.sigmoid(p)
@@ -113,18 +120,28 @@ def predict(model, dataloaders, epoch, steps = "total"):
                 a_numpy = a.cpu().detach().numpy()
                 pred_class_numpy = idx.float().cpu().detach().numpy()
                 f1_result_macro = f1_score(a_numpy, pred_class_numpy, average="macro")
+                f1_result_micro = f1_score(a_numpy, pred_class_numpy, average="micro")
+                precision_macro = average_precision_score(a_numpy, pred_class_numpy, average="macro")
+                precision_micro = average_precision_score(a_numpy, pred_class_numpy, average="micro")
+                recall_macro = recall_score(a_numpy, pred_class_numpy, average="macro")
+                recall_micro = recall_score(a_numpy, pred_class_numpy, average="micro")
+
                 inline_print(
                     f'Running {data.dataset.split}, Processed {total} of {len(data) * data.batch_size} '
                     f', Accuracy: {round(correct / total, 3)}, '
-                    f'F1 macro: {round(f1_result_macro, 3)}'
                 )
 
-        result_file = os.path.join(EXPT_DIR, f'results_{data.dataset.split}_{epoch + 1}.json')
+        result_file = os.path.join(EXPT_DIR, f'results_{data.dataset.split}_{epoch + 1}_{steps}.json')
         json.dump(results, open(result_file, 'w'))
         print(f"Saved {result_file}")
 
         print(f'\n{data.dataset.split} Accuracy for Epoch {epoch + 1}, Steps {steps}: {correct / total}')
         print(f'{data.dataset.split} F1 macro for Epoch {epoch + 1}, Steps {steps}: {f1_result_macro}\n')
+        print(f'{data.dataset.split} F1 micro for Epoch {epoch + 1}, Steps {steps}: {f1_result_micro}\n')
+        print(f'{data.dataset.split} Precision macro for Epoch {epoch + 1}, Steps {steps}: {precision_macro}\n')
+        print(f'{data.dataset.split} Precision micro for Epoch {epoch + 1}, Steps {steps}: {precision_micro}\n')
+        print(f'{data.dataset.split} Recall macro for Epoch {epoch + 1}, Steps {steps}: {recall_macro}\n')
+        print(f'{data.dataset.split} Recall micro for Epoch {epoch + 1}, Steps {steps}: {recall_micro}\n')
 
 
 def update_learning_rate(epoch, optimizer, config):
@@ -144,7 +161,7 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
                 'optim_state_dict': optimizer.state_dict(),
                 'epoch': epoch,
                 'lr': optimizer.param_groups[0]['lr']}
-        # torch.save(data, curr_epoch_path)
+        torch.save(data, curr_epoch_path)
         torch.save(data, latest_path)
 
         if epoch % config.test_interval == 0 or epoch >= config.test_every_epoch_after:

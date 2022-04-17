@@ -13,7 +13,7 @@ class TextEncoder(nn.Module):
     def __init__(self, token_count=None, config=None):
         super(TextEncoder, self).__init__()
         self.embedding = nn.Embedding(token_count, config.txt_embedding_dim)
-        self.lstm = nn.LSTM(input_size=config.txt_embedding_dim, hidden_size=config.lstm_dim, num_layers=2)
+        self.lstm = nn.LSTM(input_size=config.txt_embedding_dim, hidden_size=config.text_dim, num_layers=2)
         self.drop = nn.Dropout(0.3) # MCB
 
     def forward(self, txt, txt_len):
@@ -66,7 +66,7 @@ class MultiplicationFusion(nn.Module):
         _, _, nw, nh = img_feat.shape
         txt_feat = torch.unsqueeze(txt_feat, -1)
         txt_feat = torch.unsqueeze(txt_feat, -1)
-        txt_feat = torch.tile(txt_feat, (int(self.config.img_dim/self.config.lstm_dim), nh, nw))
+        txt_feat = torch.tile(txt_feat, (int(self.config.img_dim/self.config.text_dim), nh, nw))
 
         # multiply
         mm_feat = torch.matmul(txt_feat, img_feat)
@@ -77,11 +77,11 @@ class MultiplicationFusion(nn.Module):
 
 
 class ConcatFusion(nn.Module):
-    def __init__(self, config=None, img_dim=None):
+    def __init__(self, config=None, img_dim=None, ocr_dim=0):
         super(ConcatFusion, self).__init__()
         if not img_dim:
             img_dim = config.img_dim
-        self.fusion_dim = config.lstm_dim + img_dim
+        self.fusion_dim = config.text_dim + img_dim + ocr_dim
         self.bn = nn.BatchNorm2d(self.fusion_dim)
 
         self.transform_convs = []
@@ -93,13 +93,19 @@ class ConcatFusion(nn.Module):
             self.transform_convs.append(nn.ReLU())
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
-    def forward(self, txt_feat, img_feat):
+    def forward(self, txt_feat, img_feat, ocr_feat=None):
         _, _, nw, nh = img_feat.shape
         _, tdim = txt_feat.shape
         txt_tile = txt_feat.repeat(1, 1, nw * nh)
         txt_tile = txt_tile.view(-1, tdim, nw, nh)
 
-        mm_feat = self.bn(torch.cat([img_feat, txt_tile], dim=1))
+        if ocr_feat != None and len(ocr_feat) != 0:
+            _, ocr_dim = ocr_feat.shape
+            ocr_tile = ocr_feat.repeat(1, 1, nw * nh)
+            ocr_tile = ocr_tile.view(-1, ocr_dim, nw, nh)
+            mm_feat = self.bn(torch.cat([img_feat, txt_tile, ocr_tile], dim=1))
+        else:
+            mm_feat = self.bn(torch.cat([img_feat, txt_tile], dim=1))
 
         mm_feat = self.transform_convs(mm_feat)
         return mm_feat
