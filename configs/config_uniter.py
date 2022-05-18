@@ -53,13 +53,13 @@ optimizer = torch.optim.Adamax
 # hyperparameters
 test_interval = 1  # In epochs
 test_every_epoch_after = 1
-max_epochs = 100
-batch_size = 32
+max_epochs = 50
+batch_size = 16
 dropout_classifier = 0.3
 lr = 5e-5
-lr_decay_step = 2  # Decay every this many epochs
+lr_decay_step = 5  # Decay every this many epochs
 lr_decay_rate = .7
-lr_decay_epochs = range(100, 125, lr_decay_step)
+lr_decay_epochs = range(10, 125, lr_decay_step)
 # lr_warmup_steps = [0.5 * lr, 1.0 * lr, 1.0 * lr]
 lr_warmup_steps = []
 

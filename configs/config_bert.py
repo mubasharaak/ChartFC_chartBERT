@@ -5,6 +5,7 @@ import model_bert as model
 
 train_file = dict()
 train_file['ChartFC'] = 'train_barplot_seaborn_imgtext_tesseract.json'
+# 'train_barplot_seaborn_imgtext_tesseract_augmented_100k'
 
 val_files = dict()
 val_files['ChartFC'] = {'val': 'valid_barplot_seaborn_imgtext_tesseract.json'}
@@ -63,13 +64,13 @@ optimizer = torch.optim.Adamax
 # hyperparameters
 test_interval = 1  # In epochs
 test_every_epoch_after = 1
-max_epochs = 100
+max_epochs = 15
 batch_size = 16
 dropout_classifier = 0.3
 lr = 5e-5
 lr_decay_step = 2  # Decay every this many epochs
 lr_decay_rate = .7
-lr_decay_epochs = range(100, 125, lr_decay_step)
+lr_decay_epochs = range(10, 125, lr_decay_step)
 # lr_warmup_steps = [0.5 * lr, 1.0 * lr, 1.0 * lr]
 lr_warmup_steps = []
 

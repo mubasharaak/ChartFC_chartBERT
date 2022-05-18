@@ -7,6 +7,9 @@ import torchvision.models as models
 from apex.normalization.fused_layer_norm import FusedLayerNorm
 from layer import BertLayer, BertPooler, GELU
 from transformers import BertTokenizer
+from transformers import ViTFeatureExtractor, ViTModel
+
+# from model_vit import ViTEncoder
 
 
 class BertEmbeddings(nn.Module):
@@ -44,9 +47,29 @@ class BertEmbeddings(nn.Module):
         return embeddings, attention_mask
 
 
-class ImageEncoder(nn.Module):
+class ViTEncoder(nn.Module):
+    def __init__(self):
+        super(ViTEncoder, self).__init__()
+        self.feature_extractor = ViTFeatureExtractor.from_pretrained("google/vit-base-patch16-224-in21k")
+        self.model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+
+        for name, param in self.model.named_parameters():
+            if name.startswith("encoder"):  # choose whatever you like here
+                param.requires_grad = False
+
+    def forward(self, img_list):
+        image_list = list(img_list.cpu()) # tensor to list of tensors
+        inputs = self.feature_extractor(image_list, return_tensors="pt").to("cuda")
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        img_feat = outputs.last_hidden_state.to("cuda")
+        return img_feat
+
+
+class FCImageEncoder(nn.Module):
     def __init__(self, num_init_features=None):
-        super(ImageEncoder, self).__init__()
+        super(FCImageEncoder, self).__init__()
         self.conv = nn.Sequential(OrderedDict([
             ('conv', nn.Conv2d(3, num_init_features, kernel_size=7, stride=2, padding=1, bias=False)),
             ('norm', nn.BatchNorm2d(num_init_features)),
@@ -102,11 +125,12 @@ class ChartFCBaseline(nn.Module):
         self.txt_encoder = BertEmbeddings(config)
 
         # image encoder
-        self.img_encoder = models.alexnet()
-        self.img_lin = nn.Linear(256*14*19, 768)
+        # self.img_encoder = models.alexnet()
+        # self.img_lin = nn.Linear(256*14*19, 768) # @todo uncomment for AlexNet
         # self.img_encoder = torch.nn.Sequential(*list(models.resnet152().children())[:8])
-        # self.img_encoder = ImageEncoder(config.img_dim)
+        # self.img_encoder = FCImageEncoder(config.img_dim)
         # self.img_encoder = torch.nn.Sequential(*list(models.vgg16().children())[0])
+        self.img_encoder = ViTEncoder()
 
         # fusion
         self.pooler = BertPooler(config)
@@ -115,21 +139,26 @@ class ChartFCBaseline(nn.Module):
         # classifier
         self.classifier = Classifier(num_classes, config)
 
-    def forward(self, img, txt, txt_len, ocr, ocr_len):
+    def forward(self, img, txt, txt_len, ocr=None, ocr_len=None):
         txt_feat, attention_mask = self.txt_encoder(txt, txt_len)
-        ocr_feat, ocr_attention_mask = self.txt_encoder(ocr, ocr_len, is_ocr=True)
-        img_feat = self.img_encoder.features(img)
-        img_feat = img_feat.reshape(img_feat.shape[0], -1)
-        img_feat = self.img_lin(img_feat)
-        img_feat = img_feat.unsqueeze(1)
+        # ocr_feat, ocr_attention_mask = self.txt_encoder(ocr, ocr_len, is_ocr=True)
+        img_feat = self.img_encoder(img)
 
-        mm_feat = torch.cat([img_feat, txt_feat, ocr_feat], dim=1)
+        # img_feat = self.img_encoder.features(img) # @todo uncomment for AlexNet
+        # img_feat = img_feat.reshape(img_feat.shape[0], -1) # @todo uncomment for AlexNet
+        # img_feat = self.img_lin(img_feat) # @todo uncomment for AlexNet
+        # img_feat = img_feat.unsqueeze(1) # @todo uncomment for AlexNet
+
+        # mm_feat = torch.cat([img_feat, txt_feat, ocr_feat], dim=1)
+        # attention_mask = torch.cat(
+        #     (attention_mask, ocr_attention_mask, torch.ones((attention_mask.shape[0], 1), dtype=torch.long)), 1)
+
+        mm_feat = torch.cat([img_feat, txt_feat], dim=1)
         attention_mask = torch.cat(
-            (attention_mask, ocr_attention_mask, torch.ones((attention_mask.shape[0], 1), dtype=torch.long)), 1)
+            (attention_mask, torch.ones((attention_mask.shape[0], img_feat.shape[1]), dtype=torch.long)), 1)
         extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
-        # todo slice image tensor before sending to transformer layers
         mm_feat = self.fusion(mm_feat, extended_attention_mask, output_all_encoded_layers=False)
         mm_feat = self.pooler(mm_feat)
 

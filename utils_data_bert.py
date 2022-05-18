@@ -9,7 +9,6 @@ from nltk.tokenize import word_tokenize
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 
-
 def encode_txt(txt, txt2idx, maxlen):
     txt_vec = torch.zeros(maxlen).long()
     txt_words = word_tokenize(txt.lower())
@@ -59,24 +58,29 @@ class ChartFCDataset(Dataset):
         idx = "".join(self.dataset[index]['image_filename'].split("_")[:2])
         idx = idx.replace("-", "")
         idx = idx.replace(".png", "")
+        idx = idx.replace(".html.csv", "")
         idx = int(idx)
+
         img_path = os.path.join(self.config.root, self.config.dataset, 'images',
                                 self.dataset[index]['image_filename'])
+        #@todo only for augmented data
+        if ".png" not in img_path and ".html.csv" in img_path:
+            img_path = img_path.split(".html.csv")[0]+".png"
 
         # Load image and transform to tensor
         img = Image.open(img_path).convert('RGB') # set 'RGB' to 'L' if black-white image
         img_tensor = self.prep(img)
 
         # Extract and prepare OCR text
-        ocr_df = pd.DataFrame(self.dataset[index]['img_text'], columns=['x', 'y', 'w', 'h', 'x_label', 'y_label', 'text'])
+        # ocr_df = pd.DataFrame(self.dataset[index]['img_text'], columns=['x', 'y', 'w', 'h', 'x_label', 'y_label', 'text'])
 
         # order by (1) x axis (=row) and within each row by (2) y axis
-        ocr_df = ocr_df.sort_values(by=['y', 'x'])
-        ocr_text = list(ocr_df["text"])
-        ocr_text = " ".join([str(entry) for entry in ocr_text])
-        ocr_text_len = len(ocr_text)
+        # ocr_df = ocr_df.sort_values(by=['y', 'x'])
+        # ocr_text = list(ocr_df["text"])
+        # ocr_text = " ".join([str(entry) for entry in ocr_text])
+        # ocr_text_len = len(ocr_text)
 
-        return txt, label, img_tensor, idx, txt_len, ocr_text, ocr_text_len
+        return txt, label, img_tensor, img_path, idx, txt_len, "", 0
 
 
 def tokenize(entry):
@@ -123,8 +127,11 @@ def build_dataloaders(config):
         ques2idx = lut['ques2idx']
         maxlen = lut['maxlen']
 
+    n = int(1 * len(cqa_train_data))
     np.random.seed(666)
     np.random.shuffle(cqa_train_data)
+    cqa_train_data = cqa_train_data[:n]
+    print(f"Training with {len(cqa_train_data)} samples in total.")
 
     # balanced sampling during training
     train_targets = [entry['answer'] for entry in cqa_train_data]

@@ -77,13 +77,18 @@ class MultiplicationFusion(nn.Module):
 
 
 class ConcatFusion(nn.Module):
-    def __init__(self, config=None, img_dim=None, ocr_dim=0):
+    def __init__(self, config=None, img_dim=None, ocr_dim=0, use_ocr=False):
         super(ConcatFusion, self).__init__()
         if not img_dim:
             img_dim = config.img_dim
-        self.fusion_dim = config.text_dim + img_dim + ocr_dim
-        self.bn = nn.BatchNorm2d(self.fusion_dim)
+        if use_ocr:
+            self.use_ocr = True
+            self.fusion_dim = config.text_dim + img_dim + ocr_dim
+        else:
+            self.use_ocr = False
+            self.fusion_dim = config.text_dim + img_dim
 
+        self.bn = nn.BatchNorm2d(self.fusion_dim)
         self.transform_convs = []
         self.num_mmc_units = config.fusion_out_dim
         self.transform_convs.append(nn.Conv2d(self.fusion_dim, self.num_mmc_units, kernel_size=1))
@@ -99,7 +104,7 @@ class ConcatFusion(nn.Module):
         txt_tile = txt_feat.repeat(1, 1, nw * nh)
         txt_tile = txt_tile.view(-1, tdim, nw, nh)
 
-        if ocr_feat != None and len(ocr_feat) != 0:
+        if self.use_ocr:
             _, ocr_dim = ocr_feat.shape
             ocr_tile = ocr_feat.repeat(1, 1, nw * nh)
             ocr_tile = ocr_tile.view(-1, ocr_dim, nw, nh)
@@ -134,16 +139,17 @@ class Classifier(nn.Module):
     def __init__(self, num_classes, config):
         super(Classifier, self).__init__()
         self.config = config
+        fusion_dim = 4096
         pooling_size = 6
         self.avg_pool = nn.AdaptiveAvgPool2d((pooling_size, pooling_size))
         self.classifier = nn.Sequential(
             nn.Dropout(p=config.dropout_classifier),
-            nn.Linear(config.fusion_out_dim*pooling_size*pooling_size, 4096),
+            nn.Linear(config.fusion_out_dim*pooling_size*pooling_size, fusion_dim),
             nn.ReLU(inplace=True),
             nn.Dropout(p=config.dropout_classifier),
-            nn.Linear(4096, 4096),
+            nn.Linear(fusion_dim, fusion_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(4096, num_classes),
+            nn.Linear(fusion_dim, num_classes),
         )
         # self.relu = nn.ReLU()
         # self.drop = nn.Dropout()

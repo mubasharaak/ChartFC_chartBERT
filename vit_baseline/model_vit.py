@@ -50,6 +50,7 @@ class RecurrentFusion(nn.Module):
         super(RecurrentFusion, self).__init__()
         self.bigru = nn.GRU(input_size=feat_in,
                             hidden_size=num_bigru_units,
+                            num_layers=2,
                             batch_first=True,
                             bidirectional=True)
 
@@ -63,7 +64,7 @@ class RecurrentFusion(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, num_classes, config):
         super(Classifier, self).__init__()
-        hidden_size = config.hidden_size
+        hidden_size = config.hidden_size*4
         self.classifier = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
             GELU(),
@@ -96,7 +97,7 @@ class ChartFCBaseline(nn.Module):
             self.transform_convs.append(nn.Conv1d(self.num_mmc_units, self.num_mmc_units, kernel_size=1))
             self.transform_convs.append(nn.ReLU())
         self.transform_convs = nn.Sequential(*self.transform_convs)
-        # self.rf = RecurrentFusion(config.fusion_out_dim, config.fusion_out_dim)
+        self.rf = RecurrentFusion(config.fusion_out_dim, config.fusion_out_dim)
 
         # classifier
         self.classifier = Classifier(num_classes, config)
@@ -111,7 +112,7 @@ class ChartFCBaseline(nn.Module):
         final_feat = torch.transpose(final_feat, 1, 2)
         final_feat = self.bn(final_feat)
         final_feat = self.transform_convs(final_feat)
-        # final_feat = self.rf(final_feat)
+        final_feat = self.rf(final_feat)
 
         # classifier
         # final_feat = torch.transpose(final_feat, 1, 2)
