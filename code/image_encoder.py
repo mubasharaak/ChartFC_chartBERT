@@ -53,6 +53,7 @@ class AlexNetEncoder(ImageEncoder):
 class ResNetEncoder(ImageEncoder):
     def __init__(self, config):
         super().__init__(config)
+        config.img_dim = 2048
         self.resnet = nn.Sequential(*list(models.resnet152().children())[:8])
 
     def forward(self, img):
@@ -64,7 +65,9 @@ class DenseNetEncoder(ImageEncoder):
     def __init__(self, config):
         super().__init__(config)
         self.block_config = block_config=(6, 6, 6)
+        config.img_dim = config.densenet_dim[0] + config.densenet_dim[1]
         num_init_features = 64
+
         self.first_conv = nn.Sequential(OrderedDict([
             ('conv0', nn.Conv2d(3, num_init_features, kernel_size=7, stride=2, padding=1, bias=False)),
             ('norm0', nn.BatchNorm2d(num_init_features)),
@@ -72,8 +75,7 @@ class DenseNetEncoder(ImageEncoder):
             ('pool0', nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),
         ]))
 
-        self.denseblock = []
-        # Each denseblock
+        self.denseblock = [] # list of dense blocks
         num_features = num_init_features
         growth_rate = 32
         for i, num_layers in enumerate(block_config):
@@ -118,6 +120,7 @@ class DenseNetEncoder(ImageEncoder):
 class ViTEncoder(ImageEncoder):
     def __init__(self, config):
         super().__init__(config)
+        config.img_dim = 768
         self.feature_extractor = ViTFeatureExtractor.from_pretrained("google/vit-base-patch16-224-in21k")
         self.vit = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
 
