@@ -47,7 +47,6 @@ lut_location = ''  # When training, LUT for question and answer token to idx is 
 # DenseNet config
 
 # Text encoder config
-fusion_out_dim = 1536
 num_rf_out = 1536
 hidden_size = 1536
 
@@ -104,3 +103,5 @@ COMPONENTS = {
     "bert": text_encoder.BertEncoder,
     # ...
 }
+# fusion
+fusion_out_dim = 0
