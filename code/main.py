@@ -9,6 +9,7 @@ import torch
 from sklearn.metrics import f1_score, average_precision_score, recall_score
 
 import configs.config as CONFIG
+from model import ChartFCBaseline
 from utils_data_bert import build_dataloaders
 
 parser = argparse.ArgumentParser()
@@ -251,6 +252,8 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
 
 
 def create_model(lut_text_len, label_count):
+    model = ChartFCBaseline()
+
     # set depending on model combination specific hyperparameters in config e.g. fusion_dim
 
 
