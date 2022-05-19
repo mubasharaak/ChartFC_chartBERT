@@ -1,10 +1,11 @@
-import torch
-import torchvision.models as models
 from abc import abstractmethod
 from collections import OrderedDict
 
+import torch
 import torch.nn as nn
+import torchvision.models as models
 from torchvision.models.densenet import _DenseBlock, _Transition
+from transformers import ViTFeatureExtractor, ViTModel
 
 
 class ImageEncoder(nn.Module):
@@ -112,3 +113,19 @@ class DenseNetEncoder(ImageEncoder):
 
         out = torch.cat([denseblock_feat, final_feat], dim=1)
         return out
+
+
+class ViTEncoder(ImageEncoder):
+    def __init__(self, config):
+        super().__init__(config)
+        self.feature_extractor = ViTFeatureExtractor.from_pretrained("google/vit-base-patch16-224-in21k")
+        self.vit = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+
+    def forward(self, img):
+        image_list = list(img.cpu()) # tensor to list of tensors
+        inputs = self.feature_extractor(image_list, return_tensors="pt").to("cuda")
+        with torch.no_grad():
+            outputs = self.vit(**inputs)
+
+        img_feat = outputs.last_hidden_state.to("cuda")
+        return img_feat
