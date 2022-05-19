@@ -251,7 +251,13 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
 
 
 def create_model(lut_text_len, label_count):
-    pass
+    # set depending on model combination specific hyperparameters in config e.g. fusion_dim
+
+
+    # create model using info from CONFIG (components, parameters, etc.)
+
+
+    return ""
 
 
 def main():
