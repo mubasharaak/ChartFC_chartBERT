@@ -1,7 +1,6 @@
 import torch
+import torch.nn as nn
 from torchvision import transforms
-
-import model_bert as model
 
 train_file = dict()
 train_file['ChartFC'] = 'train_barplot_seaborn_imgtext_tesseract.json'
@@ -29,7 +28,6 @@ transform_combo_test['ChartFC'] = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-model = model.ChartFCBaseline
 root = 'data'  # This will be overwritten by command line argument
 dataset = 'ChartFC'  # Should be defined above in the datastore section
 
@@ -78,8 +76,10 @@ expt_dir = ""  # directory for results saving
 text_encoder = ""
 image_encoder = ""
 fusion = ""
+config_location = '/scratch/users/k20116188/prefil/configs/config.py'
 
-
+# model
+criterion = nn.BCEWithLogitsLoss()
 
 
 

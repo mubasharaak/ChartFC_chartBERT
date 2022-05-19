@@ -6,10 +6,9 @@ import sys
 
 import pandas as pd
 import torch
-import torch.nn as nn
 from sklearn.metrics import f1_score, average_precision_score, recall_score
 
-import configs.config_bert as CONFIG
+import configs.config as CONFIG
 from utils_data_bert import build_dataloaders
 
 parser = argparse.ArgumentParser()
@@ -21,9 +20,9 @@ parser.add_argument('--txt_encoder', type=str)
 parser.add_argument('--fusion', type=str)
 
 
-def make_experiment_directory(CONFIG):
-    if not os.path.exists(EXPT_DIR) and not args.evaluate and not args.resume:
-        os.makedirs(EXPT_DIR)
+def make_experiment_directory():
+    if not os.path.exists(CONFIG.expt_dir) and not args.evaluate and not args.resume:
+        os.makedirs(CONFIG.expt_dir)
 
 
 def inline_print(text):
@@ -99,9 +98,9 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
                     'epoch': epoch,
                     'lr': optimizer.param_groups[0]['lr']}
 
-            results_file = pd.read_csv(os.path.join(EXPT_DIR, "results.csv"))
+            results_file = pd.read_csv(os.path.join(CONFIG.expt_dir, "results.csv"))
             if all(val_acc > entry for entry in results_file["accuracy"]):
-                best_path = os.path.join(EXPT_DIR, 'best_model.pth')
+                best_path = os.path.join(CONFIG.expt_dir, 'best_model.pth')
                 torch.save(data, best_path)
 
             results_file = results_file.append({'epoch': str(epoch + 1) + '_' + str(save_steps),
@@ -123,7 +122,7 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
                                                 'lr_decay_step': CONFIG.lr_decay_step,
                                                 'batch_size': CONFIG.batch_size},
                                                ignore_index=True)
-            results_file.to_csv(os.path.join(EXPT_DIR, "results.csv"), index=False)
+            results_file.to_csv(os.path.join(CONFIG.expt_dir, "results.csv"), index=False)
 
     f1_result_macro = f1_score(y_true, y_pred, average="macro")
     print(f'\nTrain Accuracy for Epoch {epoch + 1}: {correct / total}')
@@ -178,7 +177,7 @@ def predict(model, dataloaders, epoch, steps = "total"):
                     f', Accuracy: {round(correct / total, 3)}, '
                 )
 
-        # result_file = os.path.join(EXPT_DIR, f'results_{data.dataset.split}_{epoch + 1}_{steps}.json')
+        # result_file = os.path.join(CONFIG.expt_dir, f'results_{data.dataset.split}_{epoch + 1}_{steps}.json')
         # json.dump(results, open(result_file, 'w'))
         # print(f"Saved {result_file}")
 
@@ -215,8 +214,8 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
                 'optim_state_dict': optimizer.state_dict(),
                 'epoch': epoch,
                 'lr': optimizer.param_groups[0]['lr']}
-        # curr_epoch_path = os.path.join(EXPT_DIR, str(epoch + 1) + '.pth')
-        # latest_path = os.path.join(EXPT_DIR, 'latest.pth')
+        # curr_epoch_path = os.path.join(CONFIG.expt_dir, str(epoch + 1) + '.pth')
+        # latest_path = os.path.join(CONFIG.expt_dir, 'latest.pth')
         # torch.save(data, curr_epoch_path)
         # torch.save(data, latest_path)
 
@@ -224,9 +223,9 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
             val_acc, val_f1_macro, val_f1_micro, val_prec_macro, val_prec_micro, val_recall_macro, val_recall_micro = predict(model, val_loaders, epoch)
             test_acc, test_f1_macro, test_f1_micro, test_prec_macro, test_prec_micro, test_recall_macro, test_recall_micro = predict(model, test_loaders, epoch)
 
-            results_file = pd.read_csv(os.path.join(EXPT_DIR, "results.csv"))
+            results_file = pd.read_csv(os.path.join(CONFIG.expt_dir, "results.csv"))
             if all(val_acc > entry for entry in results_file["accuracy"]):
-                best_path = os.path.join(EXPT_DIR, 'best_model.pth')
+                best_path = os.path.join(CONFIG.expt_dir, 'best_model.pth')
                 torch.save(data, best_path)
 
             results_file = results_file.append({'epoch': str(epoch + 1),
@@ -248,61 +247,61 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
                                                 'lr_decay_step': CONFIG.lr_decay_step,
                                                 'batch_size': CONFIG.batch_size},
                                                ignore_index=True)
-            results_file.to_csv(os.path.join(EXPT_DIR, "results.csv"), index=False)
+            results_file.to_csv(os.path.join(CONFIG.expt_dir, "results.csv"), index=False)
+
+
+def create_model(lut_text_len, label_count):
+    pass
 
 
 def main():
-    make_experiment_directory(CONFIG)
-    if args.evaluate or args.resume:
-        CONFIG.lut_location = os.path.join(EXPT_DIR, 'LUT.json')
-        train_data, val_data, test_data, n1, n2 = build_dataloaders(CONFIG)
-    else:
-        # create model and data loaders
-        train_data, val_data, test_data, n1, n2 = build_dataloaders(CONFIG)
+    make_experiment_directory(CONFIG)  # directory where all results are stored
+
+    if args.evaluate or args.resume:  # no training from scratch but resuming training (resume) or testing (evaluate)
+        CONFIG.lut_location = os.path.join(CONFIG.expt_dir, 'LUT.json')
+        train_data, val_data, test_data, text2idx_len, label2idx_len = build_dataloaders(CONFIG)
+    else:  # running training from scratch
+        train_data, val_data, test_data, text2idx_len, label2idx_len = build_dataloaders(CONFIG)
         lut_dict = {'ans2idx': train_data.dataset.label2idx,
                     'ques2idx': train_data.dataset.txt2idx,
                     'maxlen': train_data.dataset.maxlen}
-        json.dump(lut_dict, open(os.path.join(EXPT_DIR, 'LUT.json'), 'w'))
+        json.dump(lut_dict, open(os.path.join(CONFIG.expt_dir, 'LUT.json'), 'w'))
 
-        # first call
-        # copy config
-        if not os.path.exists(os.path.join(EXPT_DIR, 'config_bert.py')):
-            shutil.copy(f'/scratch/users/k20116188/prefil/configs/config_bert.py',
-                        os.path.join(EXPT_DIR, 'config_bert.py'))
+        if not os.path.exists(os.path.join(CONFIG.expt_dir, 'config.py')):  # copy config to results folder
+            shutil.copy(CONFIG.config_location, os.path.join(CONFIG.expt_dir, 'config.py'))
 
-    model = CONFIG.model(n1, 1, CONFIG)
+    # Create model given encoder and fusion arguments
+    model = create_model(text2idx_len, 1)
     print("Model Overview: ")
     print(model)
     model.to("cuda")
 
-    # save model summary
-    if not os.path.exists(os.path.join(EXPT_DIR, 'model_summary.txt')):
-        with open(os.path.join(EXPT_DIR, 'model_summary.txt'), "w") as file:
+    # Set optimizer, criterion
+    optimizer = CONFIG.optimizer(model.parameters(), lr=CONFIG.lr)
+    criterion = CONFIG.criterion
+    start_epoch = 0
+
+    # Save model summary in a .txt file
+    if not (args.evaluate or args.resume):
+        with open(os.path.join(CONFIG.expt_dir, 'model_summary.txt'), "w") as file:
             print(model, file=file)
             file.close()
 
-    # create and save empty results.csv file if not existing
-    if not os.path.exists(os.path.join(EXPT_DIR, 'results.csv')):
+    # Create results.csv file if not existing
+    if not os.path.exists(os.path.join(CONFIG.expt_dir, 'results.csv')):
         results = pd.DataFrame(columns=['epoch', 'dataset',
                                         'accuracy', 'f1_macro', 'f1_micro',
                                         'recall_macro', 'recall_micro',
                                         'precision_macro', 'precision_micro',
                                         'learning_rate', 'lr_decay_rate', 'lr_decay_step',
                                         'batch_size', 'weight_decay'])
-        # create empty file
-        results.to_csv(os.path.join(EXPT_DIR, 'results.csv'), index=False)
-    else:
-        # load empty file
-        results = pd.read_csv(os.path.join(EXPT_DIR, 'results.csv'))
+        results.to_csv(os.path.join(CONFIG.expt_dir, 'results.csv'), index=False)
 
-    # set optimizer, criterion
-    optimizer = CONFIG.optimizer(model.parameters(), lr=LEARNING_RATE)
-    criterion = nn.BCEWithLogitsLoss()
-    start_epoch = 0
-
+    # If resuming training, load saved model
     if args.resume:
-        resumed_data = torch.load(os.path.join(EXPT_DIR, 'latest.pth'))
+        resumed_data = torch.load(os.path.join(CONFIG.expt_dir, 'model.pth'))
         print(f"Resuming from epoch {resumed_data['epoch'] + 1}")
+
         model.load_state_dict(resumed_data['model_state_dict'])
         optimizer = CONFIG.optimizer(model.parameters(), lr=resumed_data['lr'])
         optimizer.load_state_dict(resumed_data['optim_state_dict'])
@@ -328,6 +327,4 @@ if __name__ == '__main__':
     CONFIG.expt_dir = os.path.join(args.data_root, 'experiments', f"{args.txt_encoder}_{args.img_encoder}_{args.fusion}")
 
     # hyperparameters no manual setting of hyperparameters
-    # CONFIG.lr = float(args.lr)
-
     main()
