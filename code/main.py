@@ -3,23 +3,22 @@ import json
 import os
 import shutil
 import sys
+
+import pandas as pd
 import torch
 import torch.nn as nn
 from sklearn.metrics import f1_score, average_precision_score, recall_score
+
 import configs.config_bert as CONFIG
 from utils_data_bert import build_dataloaders
-import pandas as pd
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--evaluate', action='store_true')
 parser.add_argument('--resume', action='store_true')
 parser.add_argument('--data_root', default='data', type=str)
-parser.add_argument('--lr', type=str)
-args = parser.parse_args()
-EXPT_DIR = os.path.join(args.data_root, 'experiments', "bert_densenet_multiplication_baseline")
-CONFIG.root = args.data_root
-LEARNING_RATE = float(args.lr)
-CONFIG.lr = LEARNING_RATE
+parser.add_argument('--img_encoder', type=str)
+parser.add_argument('--txt_encoder', type=str)
+parser.add_argument('--fusion', type=str)
 
 
 def make_experiment_directory(CONFIG):
@@ -314,4 +313,21 @@ def main():
 
 
 if __name__ == '__main__':
+    args = parser.parse_args()
+
+    # model
+    assert args.txt_encoder.lower() in ["word_embedding", "lstm", "bert"], "Error: Unknown text encoder specified as argument for main.py, 'txt_encoder' must be one of following values: ['word_embedding', 'lstm', 'bert']"
+    CONFIG.text_encoder = args.txt_encoder
+    assert args.img_encoder in ['fc', 'alexnet', 'resnet', 'densenet', 'vit'], "Error: Unknown image encoder specified as argument for main.py, 'txt_encoder' must be one of following values: ['fc', 'alexnet', 'resnet', 'densenet', 'vit']"
+    CONFIG.image_encoder = args.img_encoder
+    assert args.fusion in ['concat', 'concat_bigru', 'mult', 'mcb', 'transf'], "Error: Unknown fusion specified as argument for main.py, 'txt_encoder' must be one of following values: ['concat', 'concat_bigru', 'mult', 'mcb', 'transf']"
+    CONFIG.fusion = args.fusion
+
+    # directories
+    CONFIG.root = args.data_root
+    CONFIG.expt_dir = os.path.join(args.data_root, 'experiments', f"{args.txt_encoder}_{args.img_encoder}_{args.fusion}")
+
+    # hyperparameters no manual setting of hyperparameters
+    # CONFIG.lr = float(args.lr)
+
     main()
