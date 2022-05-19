@@ -45,8 +45,6 @@ test_transform = transform_combo_test[dataset]
 lut_location = ''  # When training, LUT for question and answer token to idx is computed from scratch if left empty, or
 
 # DenseNet config
-densenet_config = (6, 12, 24)
-densenet_dim = [128, 256, 1024]  # (6, 12, 24)
 
 # Text encoder config
 fusion_out_dim = 1536
@@ -89,10 +87,15 @@ txt_encoder = None
 img_encoder = None
 fusion_method = None
 
-# encoder
+# encodera
 lstm_embedding_dim = 32
 simple_encoder_max_position_embeddings = 512
 text_dim = 0
+img_dim = 0
+
+# DenseNet
+densenet_config = (6, 12, 24)
+densenet_dim = [128, 256, 1024]
 
 # encoder BERT
 pretrained_model = "bert-base-multilingual-cased"

@@ -65,7 +65,7 @@ class LstmEncoder(TextEncoder):
         packed = pack_padded_sequence(embedding, txt_len, batch_first=True, enforce_sorted=False)
         o, (h, c) = self.lstm(packed)
 
-        txt_feat = torch.cat([c.squeeze(0)[0], c.squeeze(0)[1]], dim=1)  # Concat LSTM output from layer 1 & 2
+        txt_feat = torch.cat([c.squeeze(0)[0], c.squeeze(0)[1]], dim=1)  # concatenate LSTM output from layer 1 & 2
         txt_feat = self.drop(txt_feat)
         return txt_feat
 
