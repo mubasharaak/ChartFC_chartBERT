@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 
 class FusionBase(nn.Module):
     def __init__(self, config):
-        pass
+        super(FusionBase, self).__init__()
+        self.config = config
 
     @abstractmethod
     def forward(self, txt, img):

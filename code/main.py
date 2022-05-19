@@ -201,8 +201,6 @@ def predict(model, dataloaders, epoch, steps = "total"):
 
 
 def update_learning_rate(epoch, optimizer, config):
-    # if epoch < len(config.lr_warmup_steps):
-    #     optimizer.param_groups[0]['lr'] = config.lr_warmup_steps[epoch]*optimizer.param_groups[0]['lr']
     if epoch in config.lr_decay_epochs:
         optimizer.param_groups[0]['lr'] *= config.lr_decay_rate
 
@@ -251,7 +249,7 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
             results_file.to_csv(os.path.join(CONFIG.expt_dir, "results.csv"), index=False)
 
 
-def create_model(lut_text_len, label_count):
+def create_model():
     model = ChartFCBaseline()
 
     # set depending on model combination specific hyperparameters in config e.g. fusion_dim
@@ -260,7 +258,7 @@ def create_model(lut_text_len, label_count):
     # create model using info from CONFIG (components, parameters, etc.)
 
 
-    return ""
+    return model
 
 
 def main():
@@ -269,18 +267,20 @@ def main():
     if args.evaluate or args.resume:  # no training from scratch but resuming training (resume) or testing (evaluate)
         CONFIG.lut_location = os.path.join(CONFIG.expt_dir, 'LUT.json')
         train_data, val_data, test_data, text2idx_len, label2idx_len = build_dataloaders(CONFIG)
+        CONFIG.txt_token_count = text2idx_len
     else:  # running training from scratch
         train_data, val_data, test_data, text2idx_len, label2idx_len = build_dataloaders(CONFIG)
         lut_dict = {'ans2idx': train_data.dataset.label2idx,
                     'ques2idx': train_data.dataset.txt2idx,
                     'maxlen': train_data.dataset.maxlen}
         json.dump(lut_dict, open(os.path.join(CONFIG.expt_dir, 'LUT.json'), 'w'))
+        CONFIG.txt_token_count = text2idx_len
 
         if not os.path.exists(os.path.join(CONFIG.expt_dir, 'config.py')):  # copy config to results folder
             shutil.copy(CONFIG.config_location, os.path.join(CONFIG.expt_dir, 'config.py'))
 
     # Create model given encoder and fusion arguments
-    model = create_model(text2idx_len, 1)
+    model = create_model()
     print("Model Overview: ")
     print(model)
     model.to("cuda")

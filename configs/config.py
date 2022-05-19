@@ -45,7 +45,6 @@ densenet_config = (6, 12, 24)
 densenet_dim = [128, 256, 1024]  # (6, 12, 24)
 
 # Text encoder config
-text_dim = 768
 fusion_out_dim = 1536
 num_rf_out = 1536
 hidden_size = 1536
@@ -80,7 +79,15 @@ config_location = '/scratch/users/k20116188/prefil/configs/config.py'
 
 # model
 criterion = nn.BCEWithLogitsLoss()
+txt_token_count = 0
+label_count = 1
 
+# encoder
+lstm_embedding_dim = 0
+text_dim = 0
+
+# encoder BERT
+pretrained_model = "bert-base-multilingual-cased"
 
 
 
