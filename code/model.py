@@ -17,14 +17,9 @@ class Classifier(nn.Module):
 class ChartFCBaseline(nn.Module):
     def __init__(self, config):
         super(ChartFCBaseline, self).__init__()
-        self.text_encoder = TextEncoder(config)  # @todo how to extract correct encoders fusion => get it from a dict in config?
-
-        # @todo set config.text_dim such that updated everywhere e.g. ImageEncoder => import CONFIG everytime new?
-        # if BERT set text_dim this otherwise...
-        config.text_dim = 768
-
-        self.image_encoder = ImageEncoder(config)
-        self.fusion = FusionBase(config)
+        self.text_encoder = config.COMPONENTS[config.txt_encoder]
+        self.image_encoder = config.COMPONENTS[config.img_encoder]
+        self.fusion = config.COMPONENTS[config.fusion_method]
         self.classifier = Classifier(config)
 
     def forward(self, img, txt, txt_len):

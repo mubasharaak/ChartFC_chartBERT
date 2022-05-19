@@ -17,17 +17,17 @@ class TextEncoder(nn.Module):
         pass
 
 
-class SimpleEncoder(TextEncoder):  # @todo suggestions for name?
+class SimpleTextEncoder(TextEncoder):
     def __init__(self, config):
         super().__init__(config)
-        self.config = config
+        config.text_dim = 768
         self.tokenizer = BertTokenizer.from_pretrained(config.pretrained_model)
         self.word_embeddings = nn.Embedding(len(self.tokenizer), config.text_dim, padding_idx=0)
-        self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.text_dim)
+        self.position_embeddings = nn.Embedding(config.simple_encoder_max_position_embeddings, config.text_dim)
         self.token_type_embeddings = nn.Embedding(len(self.tokenizer), config.text_dim)
 
         self.LayerNorm = FusedLayerNorm(config.text_dim, eps=1e-12)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(0.3)
 
     def forward(self, txt, txt_len):
         embeddings = self.tokenizer.batch_encode_plus(list(txt), padding='longest', return_tensors='pt',
@@ -53,7 +53,7 @@ class SimpleEncoder(TextEncoder):  # @todo suggestions for name?
 class LstmEncoder(TextEncoder):
     def __init__(self, config):
         super().__init__(config)
-        self.config = config
+        config.text_dim = 1024
         self.embedding = nn.Embedding(config.txt_token_count, config.lstm_embedding_dim)
         self.lstm = nn.LSTM(input_size=config.lstm_embedding_dim, hidden_size=config.text_dim, num_layers=1)
         self.drop = nn.Dropout(0.3)
@@ -73,7 +73,7 @@ class LstmEncoder(TextEncoder):
 class BertEncoder(TextEncoder):
     def __init__(self, config):
         super().__init__(config)
-        self.config = config
+        config.text_dim = 768
         self.tokenizer = BertTokenizer.from_pretrained(config.pretrained_model)
         self.bert_encoder = BertModel.from_pretrained(config.pretrained_model, output_hidden_states=True)
 

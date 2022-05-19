@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 from torchvision import transforms
+from code import text_encoder, image_encoder, fusion
+
+
+# @todo try to load the config and check if changes to config are taking over by other
 
 train_file = dict()
 train_file['ChartFC'] = 'train_barplot_seaborn_imgtext_tesseract.json'
@@ -81,13 +85,19 @@ config_location = '/scratch/users/k20116188/prefil/configs/config.py'
 criterion = nn.BCEWithLogitsLoss()
 txt_token_count = 0
 label_count = 1
+txt_encoder = None
+img_encoder = None
+fusion_method = None
 
 # encoder
-lstm_embedding_dim = 0
+lstm_embedding_dim = 32
+simple_encoder_max_position_embeddings = 512
 text_dim = 0
 
 # encoder BERT
 pretrained_model = "bert-base-multilingual-cased"
 
-
-
+COMPONENTS = {
+    "bert": text_encoder.BertEncoder,
+    # ...
+}

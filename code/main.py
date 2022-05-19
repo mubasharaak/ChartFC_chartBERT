@@ -250,14 +250,7 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
 
 
 def create_model():
-    model = ChartFCBaseline()
-
-    # set depending on model combination specific hyperparameters in config e.g. fusion_dim
-
-
-    # create model using info from CONFIG (components, parameters, etc.)
-
-
+    model = ChartFCBaseline(CONFIG)
     return model
 
 
@@ -325,11 +318,11 @@ if __name__ == '__main__':
 
     # model
     assert args.txt_encoder.lower() in ["word_embedding", "lstm", "bert"], "Error: Unknown text encoder specified as argument for main.py, 'txt_encoder' must be one of following values: ['word_embedding', 'lstm', 'bert']"
-    CONFIG.text_encoder = args.txt_encoder
+    CONFIG.txt_encoder = args.txt_encoder
     assert args.img_encoder in ['fc', 'alexnet', 'resnet', 'densenet', 'vit'], "Error: Unknown image encoder specified as argument for main.py, 'txt_encoder' must be one of following values: ['fc', 'alexnet', 'resnet', 'densenet', 'vit']"
-    CONFIG.image_encoder = args.img_encoder
+    CONFIG.img_encoder = args.img_encoder
     assert args.fusion in ['concat', 'concat_bigru', 'mult', 'mcb', 'transf'], "Error: Unknown fusion specified as argument for main.py, 'txt_encoder' must be one of following values: ['concat', 'concat_bigru', 'mult', 'mcb', 'transf']"
-    CONFIG.fusion = args.fusion
+    CONFIG.fusion_method = args.fusion
 
     # directories
     CONFIG.root = args.data_root
