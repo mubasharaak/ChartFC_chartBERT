@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from compact_bilinear_pooling_layer import CompactBilinearPooling
-from layer import BertLayer, BertPooler, GELU
+from layer import BertLayer, BertPooler
 
 
 class FusionBase(nn.Module):

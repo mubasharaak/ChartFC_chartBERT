@@ -38,7 +38,7 @@ class SimpleTextEncoder(TextEncoder):
 
         words_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
-        attention_mask = embeddings["attention_mask"]
+        # attention_mask = embeddings["attention_mask"]
         token_type_embeddings = self.token_type_embeddings(embeddings["token_type_ids"].to("cuda"))
 
         embeddings = (words_embeddings
@@ -47,7 +47,7 @@ class SimpleTextEncoder(TextEncoder):
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
 
-        return embeddings, attention_mask  # @todo find a way to NOT return attention_mask
+        return embeddings
 
 
 class LstmEncoder(TextEncoder):
