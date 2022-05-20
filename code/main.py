@@ -201,7 +201,9 @@ def predict(model, dataloaders, epoch, steps = "total"):
 
 
 def update_learning_rate(epoch, optimizer, config):
-    if epoch in config.lr_decay_epochs:
+    if epoch < len(config.lr_warmup_steps):
+        optimizer.param_groups[0]['lr'] *= config.lr_warmup_steps[epoch]
+    elif epoch in config.lr_decay_epochs:
         optimizer.param_groups[0]['lr'] *= config.lr_decay_rate
 
 
@@ -249,11 +251,6 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
             results_file.to_csv(os.path.join(CONFIG.expt_dir, "results.csv"), index=False)
 
 
-def create_model():
-    model = ChartFCBaseline(CONFIG)
-    return model
-
-
 def main():
     make_experiment_directory(CONFIG)  # directory where all results are stored
 
@@ -273,7 +270,7 @@ def main():
             shutil.copy(CONFIG.config_location, os.path.join(CONFIG.expt_dir, 'config.py'))
 
     # Create model given encoder and fusion arguments
-    model = create_model()
+    model = ChartFCBaseline(CONFIG)
     print("Model Overview: ")
     print(model)
     model.to("cuda")

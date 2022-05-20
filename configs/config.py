@@ -61,7 +61,7 @@ lr = 5e-5
 lr_decay_step = 2  # Decay every this many epochs
 lr_decay_rate = .7
 lr_decay_epochs = range(10, 125, lr_decay_step)
-lr_warmup_steps = [0.5 * lr, 1.0 * lr, 1.0 * lr]
+lr_warmup_steps = [0.5 * lr]
 
 # utils
 use_ocr = False
