@@ -6,9 +6,15 @@ from code import text_encoder, image_encoder, fusion
 
 # @todo try to load the config and check if changes to config are taking over by other
 
+# main
+expt_dir = ""  # directory for results saving
+text_encoder = ""
+image_encoder = ""
+fusion = ""
+config_location = '/scratch/users/k20116188/prefil/configs/config.py'
+
 train_file = dict()
 train_file['ChartFC'] = 'train_barplot_seaborn_imgtext_tesseract.json'
-# 'train_barplot_seaborn_imgtext_tesseract_augmented_100k'
 
 val_files = dict()
 val_files['ChartFC'] = {'val': 'valid_barplot_seaborn_imgtext_tesseract.json'}
@@ -26,7 +32,6 @@ transform_combo_train['ChartFC'] = transforms.Compose([
     # transforms.RandomRotation(2.8),
     transforms.ToTensor(),
 ])
-
 transform_combo_test['ChartFC'] = transforms.Compose([
     transforms.Resize((h_resize, w_resize)),
     transforms.ToTensor(),
@@ -38,17 +43,10 @@ dataset = 'ChartFC'  # Should be defined above in the datastore section
 train_filename = train_file[dataset]
 val_filenames = val_files[dataset]
 test_filenames = test_files[dataset]
-
 train_transform = transform_combo_train[dataset]
 test_transform = transform_combo_test[dataset]
 
 lut_location = ''  # When training, LUT for question and answer token to idx is computed from scratch if left empty, or
-
-# DenseNet config
-
-# Text encoder config
-num_rf_out = 1536
-hidden_size = 1536
 
 # optimizer = torch.optim.Adam
 optimizer = torch.optim.Adamax
@@ -65,18 +63,10 @@ lr_decay_rate = .7
 lr_decay_epochs = range(10, 125, lr_decay_step)
 lr_warmup_steps = [0.5 * lr, 1.0 * lr, 1.0 * lr]
 
-# NEW CONFIG SETTINGS
 # utils
 use_ocr = False
 data_subset = 1.0  # Random Fraction of data to use for training
 data_sampling_seed = 666
-
-# main
-expt_dir = ""  # directory for results saving
-text_encoder = ""
-image_encoder = ""
-fusion = ""
-config_location = '/scratch/users/k20116188/prefil/configs/config.py'
 
 # model
 criterion = nn.BCEWithLogitsLoss()
