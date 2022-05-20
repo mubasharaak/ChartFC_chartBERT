@@ -1,3 +1,4 @@
+import copy
 from abc import abstractmethod
 
 import torch
@@ -5,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from compact_bilinear_pooling_layer import CompactBilinearPooling
+from layer import BertLayer, BertPooler, GELU
 
 
 class FusionBase(nn.Module):
@@ -185,7 +187,27 @@ class MCBFusion(FusionBase):
 class TransformerFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
-        config.fusion_out_dim = 0
+        config.fusion_out_dim = 768
+        layer = BertLayer(config)
+        self.layer = nn.ModuleList([copy.deepcopy(layer) for _ in range(config.fusion_transf_layers)])
+        self.pooler = BertPooler(config)
 
     def forward(self, txt, img):
-        pass
+        output_all_encoded_layers = False
+        mm_feat = torch.cat([img, txt], dim=1)
+        attention_mask = torch.ones((txt.shape[0], txt.shape[1]), dtype=torch.long)
+        attention_mask = torch.cat((attention_mask,
+                                    torch.ones((attention_mask.shape[0], img.shape[1]), dtype=torch.long)), 1)
+        extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+
+        all_encoder_layers = []
+        hidden_states = mm_feat
+        for layer_module in self.layer:
+            hidden_states = layer_module(hidden_states, extended_attention_mask)
+            if output_all_encoded_layers:
+                all_encoder_layers.append(hidden_states)
+        if not output_all_encoded_layers:
+            return hidden_states
+
+

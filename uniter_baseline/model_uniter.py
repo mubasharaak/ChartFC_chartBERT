@@ -133,8 +133,8 @@ class ChartFCBaseline(nn.Module):
         self.img_encoder = ViTEncoder()
 
         # fusion
-        self.pooler = BertPooler(config)
         self.fusion = UniterEncoder(config)
+        self.pooler = BertPooler(config)
 
         # classifier
         self.classifier = Classifier(num_classes, config)
