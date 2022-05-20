@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import shutil
 import sys
@@ -7,6 +8,7 @@ import sys
 import pandas as pd
 import torch
 from sklearn.metrics import f1_score, average_precision_score, recall_score
+from torch import nn
 
 import configs.config as CONFIG
 from model import ChartFCBaseline
@@ -45,29 +47,20 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
     y_true = []
     y_pred = []
 
-    for batch_idx, (txt, label, img, img_path, qid, ql, ocr, ocrl) in enumerate(train_loader):
+    for batch_idx, (txt, label, img, img_path, qid, txt_len, ocr, ocrl) in enumerate(train_loader):
         i = img.to("cuda")
-        a = label.to("cuda") # answer as string
-        p = model(i, txt, None) # @todo replace 'ocr' by None to ignore OCR extracted text of charts
+        a = label.to("cuda")
 
+        p = model(i, txt, txt_len)
         loss = criterion(p, a)
         optimizer.zero_grad()
         loss.backward()
-        # nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+        nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
         optimizer.step()
 
         p_scale = torch.sigmoid(p)
         pred_class = p_scale >= 0.5
         c = float(torch.sum(pred_class.float() == a))
-
-        # for i, entry in enumerate(pred_class):
-        #     print(f"PREDICTION: {a[0] == entry.float()}")
-        #     print(f"Text is : {txt[i]}")
-        #     print(f"Img path is : {img_path[i]}")
-        #     print(f"Label is : {a[i]}")
-        #     print(f"Predicted is : {entry.float()}")
-        #     print("______________________________________________________________________")
-
         correct += c
         a_numpy = a.cpu().detach().numpy()
         pred_class_numpy = pred_class.float().cpu().detach().numpy()
@@ -76,8 +69,8 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
         y_pred.extend(pred_class_numpy)
 
         f1_result_macro = f1_score(a_numpy, pred_class_numpy, average="macro")
-        total += len(ql)
-        total_loss += loss * len(ql)
+        total += len(txt_len)
+        total_loss += loss * len(txt_len)
         inline_print(
             f'Running {train_loader.dataset.split}, Processed {total} of {len(train_loader) * train_loader.batch_size} '
             f', Accuracy: {round(correct / total, 3)}, '
@@ -85,7 +78,7 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
             f', Loss: {total_loss / total}, Learning Rate: {[param_group["lr"] for param_group in optimizer.param_groups]}'
         )
 
-        save_steps = 356
+        save_steps = math.ceil((11360/config.batch_size)/2) # validating and testing after each 0.5 epoch
         if batch_idx % save_steps == 0 and batch_idx != 0:
             print(f'\nTrain Accuracy for Steps {batch_idx}: {correct / total}')
             print(f'{train_loader.dataset.split} F1 macro for Steps {batch_idx}: {f1_result_macro}\n')
@@ -142,23 +135,15 @@ def predict(model, dataloaders, epoch, steps = "total"):
         y_pred = []
 
         with torch.no_grad():
-            for txt, a, i, img_path, qid, ql, ocr, ocrl in data:
-                i = i.to("cuda")  # image
-                a = a.to("cuda")  # answer as string
-                p = model(i, txt, None)
+            for txt, a, i, img_path, qid, txt_len, ocr, ocrl in data:
+                i = i.to("cuda")
+                a = a.to("cuda")
+                p = model(i, txt, txt_len)
                 _, idx = p.max(dim=1)
 
                 p_scale = torch.sigmoid(p)
                 pred_class = p_scale >= 0.5
                 c = float(torch.sum(pred_class.float() == a))
-
-                # for i, entry in enumerate(pred_class):
-                #     print(f"PREDICTION: {a[i] == entry.float()}")
-                #     print(f"Text is : {txt[i]}")
-                #     print(f"Img path is : {img_path[i]}")
-                #     print(f"Label is : {a[i]}")
-                #     print(f"Predicted is : {entry.float()}")
-                #     print("______________________________________________________________________")
 
                 for qqid, curr_pred_class in zip(qid, pred_class):
                     qqid = int(qqid.item())
@@ -166,7 +151,7 @@ def predict(model, dataloaders, epoch, steps = "total"):
                         results[qqid] = int(curr_pred_class)
 
                 correct += c
-                total += len(ql)
+                total += len(txt_len)
                 # for calculating metrices later
                 a_numpy = a.cpu().detach().numpy()
                 pred_class_numpy = pred_class.float().cpu().detach().numpy()
@@ -177,10 +162,6 @@ def predict(model, dataloaders, epoch, steps = "total"):
                     f'Running {data.dataset.split}, Processed {total} of {len(data) * data.batch_size} '
                     f', Accuracy: {round(correct / total, 3)}, '
                 )
-
-        # result_file = os.path.join(CONFIG.expt_dir, f'results_{data.dataset.split}_{epoch + 1}_{steps}.json')
-        # json.dump(results, open(result_file, 'w'))
-        # print(f"Saved {result_file}")
 
         f1_result_macro = f1_score(y_true, y_pred, average="macro")
         f1_result_micro = f1_score(y_true, y_pred, average="micro")
@@ -215,17 +196,14 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
                 'optim_state_dict': optimizer.state_dict(),
                 'epoch': epoch,
                 'lr': optimizer.param_groups[0]['lr']}
-        # curr_epoch_path = os.path.join(CONFIG.expt_dir, str(epoch + 1) + '.pth')
-        # latest_path = os.path.join(CONFIG.expt_dir, 'latest.pth')
-        # torch.save(data, curr_epoch_path)
-        # torch.save(data, latest_path)
 
-        if epoch % config.test_interval == 0 or epoch >= config.test_every_epoch_after:
+        if epoch % config.test_interval == 0 or epoch >= config.test_every_epoch_after: # do validation and testing
             val_acc, val_f1_macro, val_f1_micro, val_prec_macro, val_prec_micro, val_recall_macro, val_recall_micro = predict(model, val_loaders, epoch)
             test_acc, test_f1_macro, test_f1_micro, test_prec_macro, test_prec_micro, test_recall_macro, test_recall_micro = predict(model, test_loaders, epoch)
-
             results_file = pd.read_csv(os.path.join(CONFIG.expt_dir, "results.csv"))
+
             if all(val_acc > entry for entry in results_file["accuracy"]):
+                # val accuracy higher than previous ones, save model
                 best_path = os.path.join(CONFIG.expt_dir, 'best_model.pth')
                 torch.save(data, best_path)
 
@@ -248,6 +226,7 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
                                                 'lr_decay_step': CONFIG.lr_decay_step,
                                                 'batch_size': CONFIG.batch_size},
                                                ignore_index=True)
+
             results_file.to_csv(os.path.join(CONFIG.expt_dir, "results.csv"), index=False)
 
 
