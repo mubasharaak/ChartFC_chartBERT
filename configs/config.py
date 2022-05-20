@@ -100,9 +100,21 @@ densenet_dim = [128, 256, 1024]
 pretrained_model = "bert-base-multilingual-cased"
 
 COMPONENTS = {
+    "word_embedding": text_encoder.SimpleTextEncoder,
+    "lstm": text_encoder.LstmEncoder,
     "bert": text_encoder.BertEncoder,
-    # ...
+    "fc": image_encoder.SimpleImageEncoder,
+    "alexnet": image_encoder.AlexNetEncoder,
+    "resnet": image_encoder.ResNetEncoder,
+    "densenet": image_encoder.DenseNetEncoder,
+    "vit": image_encoder.ViTEncoder,
+    "concat": fusion_method.ConcatFusion,
+    "concat_bigru": fusion_method.ConcatBiGRUFusion,
+    "mult": fusion_method.MultiplicationFusion,
+    "mcb": fusion_method.MCBFusion,
+    "transf": fusion_method.TransformerFusion,
 }
+
 # fusion
 fusion_out_dim = 0
 fusion_transf_layers = 12
