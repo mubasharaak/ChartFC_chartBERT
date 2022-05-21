@@ -231,7 +231,7 @@ def train(config, model, train_loader, val_loaders, test_loaders, optimizer, cri
 
 
 def main():
-    make_experiment_directory(CONFIG)  # directory where all results are stored
+    make_experiment_directory()  # directory where all results are stored
 
     if args.evaluate or args.resume:  # no training from scratch but resuming training (resume) or testing (evaluate)
         CONFIG.lut_location = os.path.join(CONFIG.expt_dir, 'LUT.json')
@@ -293,11 +293,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # model
-    assert args.txt_encoder.lower() in ["word_embedding", "lstm", "bert"], "Error: Unknown text encoder specified as argument for main.py, 'txt_encoder' must be one of following values: ['word_embedding', 'lstm', 'bert']"
+    assert args.txt_encoder.lower() in ["word_embedding", "lstm", "bert"], f"Error: Unknown text encoder (i.e. {args.txt_encoder.lower()}) specified as argument for main.py, 'txt_encoder' must be one of following values: ['word_embedding', 'lstm', 'bert']"
     CONFIG.txt_encoder = args.txt_encoder
-    assert args.img_encoder in ['fc', 'alexnet', 'resnet', 'densenet', 'vit'], "Error: Unknown image encoder specified as argument for main.py, 'txt_encoder' must be one of following values: ['fc', 'alexnet', 'resnet', 'densenet', 'vit']"
+    assert args.img_encoder in ['fc', 'alexnet', 'resnet', 'densenet', 'vit'], f"Error: Unknown image encoder (i.e. {args.img_encoder.lower()}) specified as argument for main.py, 'txt_encoder' must be one of following values: ['fc', 'alexnet', 'resnet', 'densenet', 'vit']"
     CONFIG.img_encoder = args.img_encoder
-    assert args.fusion in ['concat', 'concat_bigru', 'mult', 'mcb', 'transf'], "Error: Unknown fusion specified as argument for main.py, 'txt_encoder' must be one of following values: ['concat', 'concat_bigru', 'mult', 'mcb', 'transf']"
+    assert args.fusion in ['concat', 'concat_bigru', 'mult', 'mcb', 'transf'], f"Error: Unknown fusion method (i.e. {args.fusion.lower()})specified as argument for main.py, 'txt_encoder' must be one of following values: ['concat', 'concat_bigru', 'mult', 'mcb', 'transf']"
     CONFIG.fusion_method = args.fusion
 
     # directories
