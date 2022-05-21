@@ -76,7 +76,7 @@ txt_encoder = None
 img_encoder = None
 fusion_method = None
 
-# encodera
+# encoders
 lstm_embedding_dim = 32
 simple_encoder_max_position_embeddings = 512
 text_dim = 0
@@ -107,5 +107,6 @@ COMPONENTS = {
 
 # fusion
 fusion_out_dim = 0
+fusion_dim = 0
 fusion_transf_layers = 12
 num_classes = 1
