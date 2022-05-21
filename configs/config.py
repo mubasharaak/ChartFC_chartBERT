@@ -107,6 +107,5 @@ COMPONENTS = {
 
 # fusion
 fusion_out_dim = 0
-fusion_dim = 0
 fusion_transf_layers = 12
 num_classes = 1

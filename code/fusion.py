@@ -50,7 +50,6 @@ class ConcatFusion(FusionBase):
 class ConcatBiGRUFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
-
         config.fusion_out_dim = config.text_dim + config.img_dim
         self.fusion_dim = config.fusion_out_dim
         self.num_mmc_units = config.fusion_out_dim
