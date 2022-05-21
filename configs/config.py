@@ -1,16 +1,16 @@
 import torch
 import torch.nn as nn
 from torchvision import transforms
-from code import text_encoder, image_encoder, fusion
+import text_encoder, image_encoder, fusion
 
 
 # @todo try to load the config and check if changes to config are taking over by other
 
 # main
 expt_dir = ""  # directory for results saving
-text_encoder = ""
-image_encoder = ""
-fusion = ""
+txt_encoder = ""
+img_encoder = ""
+fusion_method = ""
 config_location = '/scratch/users/k20116188/prefil/configs/config.py'
 
 train_file = dict()
