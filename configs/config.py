@@ -98,11 +98,11 @@ COMPONENTS = {
     "resnet": image_encoder.ResNetEncoder,
     "densenet": image_encoder.DenseNetEncoder,
     "vit": image_encoder.ViTEncoder,
-    "concat": fusion_method.ConcatFusion,
-    "concat_bigru": fusion_method.ConcatBiGRUFusion,
-    "mult": fusion_method.MultiplicationFusion,
-    "mcb": fusion_method.MCBFusion,
-    "transf": fusion_method.TransformerFusion,
+    "concat": fusion.ConcatFusion,
+    "concat_bigru": fusion.ConcatBiGRUFusion,
+    "mult": fusion.MultiplicationFusion,
+    "mcb": fusion.MCBFusion,
+    "transf": fusion.TransformerFusion,
 }
 
 # fusion
