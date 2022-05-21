@@ -38,7 +38,7 @@ class CompactBilinearPooling(nn.Module):
     """
 
     def __init__(self, input_dim1, input_dim2, output_dim,
-                 sum_pool=True, cuda=True,
+                 sum_pool=True, cuda=False,  # @todo change cuda=True for running on GPU
                  rand_h_1=None, rand_s_1=None, rand_h_2=None, rand_s_2=None):
         super(CompactBilinearPooling, self).__init__()
         self.input_dim1 = input_dim1

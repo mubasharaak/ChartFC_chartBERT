@@ -126,9 +126,8 @@ class MultiplicationFusion(FusionBase):
 class MCBFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
-        mcb_out_dim = config.fusion_out_dim
-        config.fusion_out_dim = 16000
-
+        mcb_out_dim = 16000
+        config.fusion_out_dim = 2048
         self.config = config
         self.comp_layer1 = CompactBilinearPooling(config.fusion_out_dim, config.fusion_out_dim, mcb_out_dim,
                                                   sum_pool=False)

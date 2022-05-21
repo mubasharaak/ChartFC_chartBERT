@@ -8,9 +8,6 @@ import text_encoder, image_encoder, fusion
 
 # main
 expt_dir = ""  # directory for results saving
-txt_encoder = ""
-img_encoder = ""
-fusion_method = ""
 config_location = '/scratch/users/k20116188/prefil/configs/config.py'
 
 train_file = dict()
@@ -81,13 +78,25 @@ lstm_embedding_dim = 32
 simple_encoder_max_position_embeddings = 512
 text_dim = 0
 img_dim = 0
+pretrained_model = "bert-base-multilingual-cased"
 
 # DenseNet
 densenet_config = (6, 12, 24)
 densenet_dim = [128, 256, 1024]
 
-# encoder BERT
-pretrained_model = "bert-base-multilingual-cased"
+
+# UNITER fusion config
+attention_probs_dropout_prob = 0.3
+hidden_act = "gelu"
+hidden_dropout_prob = 0.3 # todo increase to 0.2
+hidden_size = 768
+initializer_range = 0.02
+intermediate_size = 3072
+max_position_embeddings = 512
+num_attention_heads = 12
+num_hidden_layers = 12
+type_vocab_size = 2
+vocab_size = 28996
 
 COMPONENTS = {
     "word_embedding": text_encoder.SimpleTextEncoder,
