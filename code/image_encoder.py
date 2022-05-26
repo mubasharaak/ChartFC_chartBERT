@@ -113,7 +113,7 @@ class DenseNetEncoder(ImageEncoder):
             denseblock_feat.append(self.denseblock[i + 1](denseblock_feat[i]))
         final_feat = self.final_bn(denseblock_feat[-1])
 
-        out = torch.cat([denseblock_feat, final_feat], dim=1)
+        out = torch.cat([denseblock_feat, final_feat], dim=1) # @todo error: densenetblog_feat is a list (ypeError: expected Tensor as element 0 in argument 0, but got list)
         return out
 
 

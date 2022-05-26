@@ -36,9 +36,9 @@ class ConcatFusion(FusionBase):
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
     def forward(self, txt, img):
-        _, _, nw, nh = img.shape  # @todo make sure all image features come in this shape
-        _, tdim = txt.shape
-        txt_tile = txt.repeat(1, 1, nw * nh)
+        _, _, nw, nh = img.shape  # @todo error if img not this shape, e.g. alexnet,
+        _, tdim = txt.shape  # @todo error if txt is not 2-dim, e.g. simple text encoder,
+        txt_tile = txt.repeat(1, 1, nw *  nh)
         txt_tile = txt_tile.view(-1, tdim, nw, nh)
 
         mm_feat = self.bn(torch.cat([img, txt_tile], dim=1))
@@ -72,7 +72,7 @@ class ConcatBiGRUFusion(FusionBase):
 
     def forward(self, txt, img):
         # concat fusion
-        _, _, nw, nh = img.shape  # @todo make sure all image features come in this shape
+        _, _, nw, nh = img.shape  # @todo make sure all image features come in this shape => e.g. ViT is not!
         _, tdim = txt.shape
         txt_tile = txt.repeat(1, 1, nw * nh)
         txt_tile = txt_tile.view(-1, tdim, nw, nh)
@@ -116,7 +116,7 @@ class MultiplicationFusion(FusionBase):
         txt_feat = torch.tile(txt_feat, (int(self.config.img_dim / self.config.text_dim), nh, nw))
 
         # multiply
-        mm_feat = torch.matmul(txt_feat, img)
+        mm_feat = torch.matmul(txt_feat, img) # @todo word_emb and resnet => not same size for mult
 
         # 1x1 conv and relu
         mm_feat = self.transform_convs(self.bn(mm_feat))
@@ -192,7 +192,7 @@ class TransformerFusion(FusionBase):
 
     def forward(self, txt, img):
         output_all_encoded_layers = False
-        mm_feat = torch.cat([img, txt], dim=1)
+        mm_feat = torch.cat([img, txt], dim=1)  # @todo error because img and txt have different dimensions => RuntimeError: Tensors must have same number of dimensions: got 3 and 4
         attention_mask = torch.ones((txt.shape[0], txt.shape[1]), dtype=torch.long)
         attention_mask = torch.cat((attention_mask,
                                     torch.ones((attention_mask.shape[0], img.shape[1]), dtype=torch.long)), 1)
@@ -206,6 +206,7 @@ class TransformerFusion(FusionBase):
             if output_all_encoded_layers:
                 all_encoder_layers.append(hidden_states)
         if not output_all_encoded_layers:
-            return hidden_states
-
+            return hidden_states  # @todo return tensor in size [16, 1] => not [16, x, 1]
+        else:
+            return all_encoder_layers
 
