@@ -131,4 +131,5 @@ class ViTEncoder(ImageEncoder):
 
         img_feat = outputs.last_hidden_state.to("cuda")
         img_feat = img_feat.unsqueeze(-1)
+        img_feat = img_feat.permute(0, 2, 1, 3)
         return img_feat
