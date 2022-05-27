@@ -45,8 +45,7 @@ class AlexNetEncoder(ImageEncoder):
         img_feat = self.alexnet.features(img)
         img_feat = img_feat.reshape(img_feat.shape[0], -1)
         img_feat = self.img_lin(img_feat)
-        img_feat = img_feat.unsqueeze(1)
-
+        img_feat = img_feat.unsqueeze(-1).unsqueeze(-1)
         return img_feat
 
 
@@ -113,7 +112,7 @@ class DenseNetEncoder(ImageEncoder):
             denseblock_feat.append(self.denseblock[i + 1](denseblock_feat[i]))
         final_feat = self.final_bn(denseblock_feat[-1])
 
-        out = torch.cat([denseblock_feat, final_feat], dim=1) # @todo error: densenetblog_feat is a list (ypeError: expected Tensor as element 0 in argument 0, but got list)
+        out = torch.cat([denseblock_feat, final_feat], dim=1)
         return out
 
 
@@ -131,4 +130,5 @@ class ViTEncoder(ImageEncoder):
             outputs = self.vit(**inputs)
 
         img_feat = outputs.last_hidden_state.to("cuda")
+        img_feat = img_feat.unsqueeze(-1)
         return img_feat
