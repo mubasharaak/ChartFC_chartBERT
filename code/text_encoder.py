@@ -82,8 +82,5 @@ class BertEncoder(TextEncoder):
                                                       return_attention_mask=True)
         embeddings = embeddings.to('cuda')
         out = self.bert_encoder(**embeddings)
-        txt_feat = torch.mean(out[0], dim=1)
-        txt_feat = torch.unsqueeze(txt_feat, dim=1)
-
-        print(f"BertEncoder: {txt_feat.shape}")
+        txt_feat = out[0]
         return txt_feat
