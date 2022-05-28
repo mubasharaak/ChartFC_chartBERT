@@ -64,7 +64,6 @@ class DenseNetEncoder(ImageEncoder):
     def __init__(self, config):
         super().__init__(config)
         self.block_config = block_config=(6, 6, 6)
-        config.img_dim = config.densenet_dim[0] + config.densenet_dim[1]
         num_init_features = 64
 
         self.first_conv = nn.Sequential(OrderedDict([
@@ -104,6 +103,7 @@ class DenseNetEncoder(ImageEncoder):
                 nn.init.constant_(m.bias, 0)
 
         self.denseblock = nn.ModuleList(self.denseblock)
+        config.img_dim = config.densenet_dim[0] + num_features
 
     def forward(self, img):
         first_conv_feat = self.first_conv(img)
