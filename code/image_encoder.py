@@ -28,9 +28,11 @@ class SimpleImageEncoder(ImageEncoder):
             ('relu', nn.ReLU()),
             ('pool', nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),
         ]))
+        self.avg_pool = nn.AvgPool2d((3, 3), stride=(8, 8), padding=(1, 1))
 
     def forward(self, img):
         img_feat = self.conv(img)
+        img_feat = self.avg_pool(img_feat)
         return img_feat
 
 
@@ -103,6 +105,9 @@ class DenseNetEncoder(ImageEncoder):
                 nn.init.constant_(m.bias, 0)
 
         self.denseblock = nn.ModuleList(self.denseblock)
+        self.avg_pool_low = nn.AvgPool2d((3, 3), stride=(4, 4), padding=(1, 1))
+        self.avg_pool_high = nn.AvgPool2d((3, 3), stride=(2, 2), padding=(1, 1))
+
         config.img_dim = config.densenet_dim[0] + num_features
 
     def forward(self, img):
@@ -111,13 +116,13 @@ class DenseNetEncoder(ImageEncoder):
         for i in range(len(self.block_config) - 1):
             denseblock_feat.append(self.denseblock[i + 1](denseblock_feat[i]))
 
-        final_feat = self.final_bn(denseblock_feat[-1])
-        final_feat = final_feat.repeat(1, 1, 2, 2)
-        bs, f1, f2, f3 = final_feat.shape
-        final_feat = torch.cat([final_feat, torch.zeros(bs, f1, 1, f3).cuda()], dim=2)
-        final_feat = torch.cat([final_feat, torch.zeros(bs, f1, (f2+1), 1).cuda()], dim=3)
+        low_feat = denseblock_feat[0]
+        low_feat = self.avg_pool_low(low_feat)
 
-        out = torch.cat([denseblock_feat[0], final_feat], dim=1)
+        high_feat = self.final_bn(denseblock_feat[-1])
+        high_feat = self.avg_pool_high(high_feat)
+
+        out = torch.cat([low_feat, high_feat], dim=1)  # [4, 480, 59, 79]
         return out
 
 
