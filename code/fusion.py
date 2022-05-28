@@ -36,14 +36,30 @@ class ConcatFusion(FusionBase):
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
     def forward(self, txt, img):
-        _, _, nw, nh = img.shape  # @todo error if img not this shape, e.g. alexnet,
-        _, tdim = txt.shape  # @todo error if txt is not 2-dim, e.g. simple text encoder,
-        txt_tile = txt.repeat(1, 1, nw *  nh)
-        txt_tile = txt_tile.view(-1, tdim, nw, nh)
+        print(f"txt.shape: {txt.shape}")
+        print(f"img.shape: {img.shape}")
+
+        _, _, nw, nh = img.shape
+        bs, tdim1, tdim2 = txt.shape
+
+        # calculate how much to be added
+        tens_to_add = nw * nh % tdim1
+
+        # calculate repeat_dim = nw * nh / (tdim1 + rand_dim)
+        repeat_dim = int((nw * nh) / (tdim1 + tens_to_add))
+
+        if tens_to_add != 0:
+            rand_tens = torch.rand(bs, tdim2, tens_to_add)
+            txt = torch.cat((txt, rand_tens), dim=-1)
+
+        # repeat
+        txt_tile = txt.repeat(1, repeat_dim, 1)
+        txt_tile = txt_tile.view(-1, tdim2, nw, nh)
 
         mm_feat = self.bn(torch.cat([img, txt_tile], dim=1))
         mm_feat = self.transform_convs(mm_feat)
 
+        print(f"mm_feat: {mm_feat.shape}")
         return mm_feat
 
 
@@ -116,7 +132,7 @@ class MultiplicationFusion(FusionBase):
         txt_feat = torch.tile(txt_feat, (int(self.config.img_dim / self.config.text_dim), nh, nw))
 
         # multiply
-        mm_feat = torch.matmul(txt_feat, img) # @todo word_emb and resnet => not same size for mult
+        mm_feat = torch.matmul(txt_feat, img)  # @todo word_emb and resnet => not same size for mult
 
         # 1x1 conv and relu
         mm_feat = self.transform_convs(self.bn(mm_feat))
@@ -192,7 +208,8 @@ class TransformerFusion(FusionBase):
 
     def forward(self, txt, img):
         output_all_encoded_layers = False
-        mm_feat = torch.cat([img, txt], dim=1)  # @todo error because img and txt have different dimensions => RuntimeError: Tensors must have same number of dimensions: got 3 and 4
+        mm_feat = torch.cat([img, txt],
+                            dim=1)  # @todo error because img and txt have different dimensions => RuntimeError: Tensors must have same number of dimensions: got 3 and 4
         attention_mask = torch.ones((txt.shape[0], txt.shape[1]), dtype=torch.long)
         attention_mask = torch.cat((attention_mask,
                                     torch.ones((attention_mask.shape[0], img.shape[1]), dtype=torch.long)), 1)
@@ -209,4 +226,3 @@ class TransformerFusion(FusionBase):
             return hidden_states  # @todo return tensor in size [16, 1] => not [16, x, 1]
         else:
             return all_encoder_layers
-
