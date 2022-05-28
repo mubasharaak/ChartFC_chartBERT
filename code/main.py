@@ -12,7 +12,7 @@ from torch import nn
 
 import configs.config as CONFIG
 from model import ChartFCBaseline
-from utils_data_bert import build_dataloaders
+from utils import build_dataloaders
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--evaluate', action='store_true')
@@ -47,11 +47,11 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
     y_true = []
     y_pred = []
 
-    for batch_idx, (txt, label, img, img_path, qid, txt_len, ocr, ocrl) in enumerate(train_loader):
+    for batch_idx, (txt, txt_encode, label, img, img_path, qid, txt_len, ocr, ocrl) in enumerate(train_loader):
         i = img.to("cuda")
         a = label.to("cuda")
 
-        p = model(i, txt, txt_len)
+        p = model(i, txt, txt_encode, txt_len)
         loss = criterion(p, a)
         optimizer.zero_grad()
         loss.backward()
@@ -135,10 +135,10 @@ def predict(model, dataloaders, epoch, steps = "total"):
         y_pred = []
 
         with torch.no_grad():
-            for txt, a, i, img_path, qid, txt_len, ocr, ocrl in data:
+            for txt, txt_encode, a, i, img_path, qid, txt_len, ocr, ocrl in data:
                 i = i.to("cuda")
                 a = a.to("cuda")
-                p = model(i, txt, txt_len)
+                p = model(i, txt, txt_encode, txt_len)
                 _, idx = p.max(dim=1)
 
                 p_scale = torch.sigmoid(p)

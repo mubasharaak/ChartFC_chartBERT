@@ -65,6 +65,7 @@ class ChartFCDataset(Dataset):
     def __getitem__(self, index):
         txt = self.dataset[index]['question']
         txt_len = len(txt)
+        txt_encode, txt_encode_len = encode_txt(txt, self.txt2idx, self.maxlen)
         label = encode_label(self.dataset[index]['answer'])
 
         # extract id for dataset entry
@@ -88,9 +89,9 @@ class ChartFCDataset(Dataset):
             ocr_text = list(ocr_df["text"])
             ocr_text = " ".join([str(entry) for entry in ocr_text])
             ocr_text_len = len(ocr_text)
-            return txt, label, img_tensor, img_path, idx, txt_len, ocr_text, ocr_text_len
+            return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, ocr_text, ocr_text_len
         else:
-            return txt, label, img_tensor, img_path, idx, txt_len, "", 0 # no ocr text returned
+            return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, "", 0  # no ocr text returned
 
 
 def tokenize(entry):
@@ -138,7 +139,7 @@ def build_dataloaders(config):
         ques2idx = lut['ques2idx']
         maxlen = lut['maxlen']
 
-    n = int(config.train_data_fraction * len(train_data))
+    n = int(config.data_subset * len(train_data))
     np.random.seed(config.data_subset)
     np.random.shuffle(train_data)
     train_data = train_data[:n]

@@ -13,7 +13,7 @@ class TextEncoder(nn.Module):
         self.config = config
 
     @abstractmethod
-    def forward(self, txt, txt_len):
+    def forward(self, txt, txt_encode, txt_len):
         pass
 
 
@@ -29,7 +29,7 @@ class SimpleTextEncoder(TextEncoder):
         self.LayerNorm = FusedLayerNorm(config.text_dim, eps=1e-12)
         self.dropout = nn.Dropout(0.3)
 
-    def forward(self, txt, txt_len):
+    def forward(self, txt, txt_encode, txt_len):
         embeddings = self.tokenizer.batch_encode_plus(list(txt), padding='longest', return_tensors='pt',
                                                       return_attention_mask=True)
         position_ids = torch.arange(0, embeddings["input_ids"].size(1), dtype=torch.long).unsqueeze(0).repeat(
@@ -54,18 +54,20 @@ class LstmEncoder(TextEncoder):
     def __init__(self, config):
         super().__init__(config)
         config.text_dim = 1024
+        self.config = config
         self.embedding = nn.Embedding(config.txt_token_count, config.lstm_embedding_dim)
         self.lstm = nn.LSTM(input_size=config.lstm_embedding_dim, hidden_size=config.text_dim, num_layers=1)
         self.drop = nn.Dropout(0.3)
 
-    def forward(self, txt, txt_len):
-        embedding = self.embedding(txt)
+    def forward(self, txt, txt_encode, txt_len):
+        txt_encode = txt_encode.cuda()
+        embedding = self.embedding(txt_encode)
         embedding = torch.tanh(embedding)
 
         packed = pack_padded_sequence(embedding, txt_len, batch_first=True, enforce_sorted=False)
         o, (h, c) = self.lstm(packed)
 
-        txt_feat = torch.cat([c.squeeze(0)[0], c.squeeze(0)[1]], dim=1)  # concatenate LSTM output from layer 1 & 2
+        txt_feat = torch.cat([c.squeeze(0)[0], c.squeeze(0)[1]], dim=1)  # concatenate LSTM output from layer 1 & 2 #TODO continue here
         txt_feat = self.drop(txt_feat)
         return txt_feat
 
@@ -77,7 +79,7 @@ class BertEncoder(TextEncoder):
         self.tokenizer = BertTokenizer.from_pretrained(config.pretrained_model)
         self.bert_encoder = BertModel.from_pretrained(config.pretrained_model, output_hidden_states=True)
 
-    def forward(self, txt, txt_len):
+    def forward(self, txt, txt_encode, txt_len):
         embeddings = self.tokenizer.batch_encode_plus(list(txt), padding='longest', return_tensors='pt',
                                                       return_attention_mask=True)
         embeddings = embeddings.to('cuda')

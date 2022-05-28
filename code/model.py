@@ -27,9 +27,9 @@ class ChartFCBaseline(nn.Module):
         self.fusion = config.COMPONENTS[config.fusion_method](config)
         self.classifier = Classifier(config)
 
-    def forward(self, img, txt, txt_len):
+    def forward(self, img, txt, txt_encode, txt_len):
         # Unimodal encoding
-        txt_features = self.text_encoder(txt, txt_len)
+        txt_features = self.text_encoder(txt, txt_encode, txt_len)
         img_features = self.image_encoder(img)
 
         # Fusion
