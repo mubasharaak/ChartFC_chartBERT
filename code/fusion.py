@@ -49,7 +49,7 @@ class ConcatFusion(FusionBase):
         repeat_dim = int((nw * nh) / (tdim1 + tens_to_add))
 
         if tens_to_add != 0:
-            rand_tens = torch.rand(bs, tdim2, tens_to_add)
+            rand_tens = torch.rand(bs, tdim2, tens_to_add).cuda()
             txt = torch.cat((txt, rand_tens), dim=-1)
 
         # repeat
