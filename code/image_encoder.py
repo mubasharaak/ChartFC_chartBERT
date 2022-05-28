@@ -110,9 +110,14 @@ class DenseNetEncoder(ImageEncoder):
         denseblock_feat = [self.denseblock[0](first_conv_feat)]
         for i in range(len(self.block_config) - 1):
             denseblock_feat.append(self.denseblock[i + 1](denseblock_feat[i]))
-        final_feat = self.final_bn(denseblock_feat[-1])
 
-        out = torch.cat([denseblock_feat, final_feat], dim=1)
+        final_feat = self.final_bn(denseblock_feat[-1])
+        final_feat = final_feat.repeat(1, 1, 2, 2)
+        bs, f1, f2, f3 = final_feat.shape
+        final_feat = torch.cat([final_feat, torch.zeros(bs, f1, 1, f3).cuda()], dim=2)
+        final_feat = torch.cat([final_feat, torch.zeros(bs, f1, (f2+1), 1).cuda()], dim=3)
+
+        out = torch.cat([denseblock_feat[0], final_feat], dim=1)
         return out
 
 
