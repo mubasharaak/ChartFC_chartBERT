@@ -23,6 +23,9 @@ class ConcatFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
         config.fusion_out_dim = config.text_dim + config.img_dim
+        if config.img_encoder == "vit":
+            config.fusion_out_dim = config.text_dim
+
         self.fusion_dim = config.fusion_out_dim
         self.num_mmc_units = config.fusion_out_dim
 
@@ -35,31 +38,29 @@ class ConcatFusion(FusionBase):
             self.transform_convs.append(nn.ReLU())
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
+        self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
+
     def forward(self, txt, img):
         print(f"txt.shape: {txt.shape}")
         print(f"img.shape: {img.shape}")
 
+        img = self.avg_pool(img)
         _, _, nw, nh = img.shape
         bs, tdim1, tdim2 = txt.shape
 
-        # calculate how much to be added
-        tens_to_add = nw * nh % tdim1
+        txt = txt.permute(0, 2, 1)
+        txt = torch.unsqueeze(txt, -1)
 
-        # calculate repeat_dim = nw * nh / (tdim1 + rand_dim)
-        repeat_dim = int((nw * nh) / (tdim1 + tens_to_add))
+        txt_tile = txt
+        if nw == 1 and nh == 1:
+            img = img.repeat(1, 1, tdim1, 1)
+            mm_feat = torch.cat([img, txt_tile], dim=1)
+        else:
+            mm_feat = torch.cat([img, txt_tile], dim=2)
 
-        if tens_to_add != 0:
-            rand_tens = torch.rand(bs, tdim2, tens_to_add).cuda()
-            txt = torch.cat((txt, rand_tens), dim=-1)
-
-        # repeat
-        txt_tile = txt.repeat(1, repeat_dim, 1)
-        txt_tile = txt_tile.view(-1, tdim2, nw, nh)
-
-        mm_feat = self.bn(torch.cat([img, txt_tile], dim=1))
+        mm_feat = self.bn(mm_feat)
         mm_feat = self.transform_convs(mm_feat)
-
-        print(f"mm_feat: {mm_feat.shape}")
+        print("FUSION DONE!")
         return mm_feat
 
 
