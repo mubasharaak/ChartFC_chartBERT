@@ -56,7 +56,7 @@ class LstmEncoder(TextEncoder):
         config.text_dim = 1024
         self.config = config
         self.embedding = nn.Embedding(config.txt_token_count, config.lstm_embedding_dim)
-        self.lstm = nn.LSTM(input_size=config.lstm_embedding_dim, hidden_size=config.text_dim, num_layers=1)
+        self.lstm = nn.LSTM(input_size=config.lstm_embedding_dim, hidden_size=config.text_dim, num_layers=2)
         self.drop = nn.Dropout(0.3)
 
     def forward(self, txt, txt_encode, txt_len):
@@ -67,7 +67,7 @@ class LstmEncoder(TextEncoder):
         packed = pack_padded_sequence(embedding, txt_len, batch_first=True, enforce_sorted=False)
         o, (h, c) = self.lstm(packed)
 
-        txt_feat = torch.cat([c.squeeze(0)[0], c.squeeze(0)[1]], dim=1)  # concatenate LSTM output from layer 1 & 2 #TODO continue here
+        txt_feat = c.permute(1, 0, 2)
         txt_feat = self.drop(txt_feat)
         return txt_feat
 
