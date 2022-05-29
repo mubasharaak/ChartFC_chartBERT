@@ -41,9 +41,6 @@ class ConcatFusion(FusionBase):
         self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
 
     def forward(self, txt, img):
-        print(f"txt.shape: {txt.shape}")
-        print(f"img.shape: {img.shape}")
-
         img = self.avg_pool(img)
         _, _, nw, nh = img.shape
         bs, tdim1, tdim2 = txt.shape
@@ -60,7 +57,6 @@ class ConcatFusion(FusionBase):
 
         mm_feat = self.bn(mm_feat)
         mm_feat = self.transform_convs(mm_feat)
-        print("FUSION DONE!")
         return mm_feat
 
 
@@ -92,9 +88,6 @@ class ConcatBiGRUFusion(FusionBase):
                             bidirectional=True)
 
     def forward(self, txt, img):
-        print(f"txt.shape: {txt.shape}")
-        print(f"img.shape: {img.shape}")
-
         # concat fusion
         img = self.avg_pool(img)
         _, _, nw, nh = img.shape
@@ -120,8 +113,6 @@ class ConcatBiGRUFusion(FusionBase):
         output, h = self.bigru(mmc_feat)
         h_flattened = torch.flatten(torch.transpose(h, 0, 1), start_dim=1)
 
-        print("FUSION DONE!")
-
         return h_flattened
 
 
@@ -131,30 +122,46 @@ class MultiplicationFusion(FusionBase):
         config.fusion_out_dim = config.img_dim
         self.config = config
 
+        self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
         # optionally try bn and a few conv2d and relu layers
-        self.transform_convs = []
-        self.num_mmc_units = config.img_dim
-        self.bn = nn.BatchNorm2d(self.num_mmc_units)
+        self.num_mmc_units = config.text_dim
+        self.bn = nn.BatchNorm1d(self.num_mmc_units)
 
-        self.transform_convs.append(nn.Conv2d(self.num_mmc_units, self.num_mmc_units, kernel_size=1))
+        self.transform_convs = []
+        self.transform_convs.append(nn.Conv1d(self.num_mmc_units, self.num_mmc_units, kernel_size=1))
         self.transform_convs.append(nn.ReLU())
         for i in range(2):
-            self.transform_convs.append(nn.Conv2d(self.num_mmc_units, self.num_mmc_units, kernel_size=1))
+            self.transform_convs.append(nn.Conv1d(self.num_mmc_units, self.num_mmc_units, kernel_size=1))
             self.transform_convs.append(nn.ReLU())
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
     def forward(self, txt, img):
+        print(f"txt.shape: {txt.shape}")
+        print(f"img.shape: {img.shape}")
+
         # reshape and tile txt_feat
-        _, _, nw, nh = img.shape
-        txt_feat = torch.unsqueeze(txt, -1)
-        txt_feat = torch.unsqueeze(txt_feat, -1)
-        txt_feat = torch.tile(txt_feat, (int(self.config.img_dim / self.config.text_dim), nh, nw))
+        bs, i_dim, nw, nh = img.shape
 
-        # multiply
-        mm_feat = torch.matmul(txt_feat, img)  # @todo word_emb and resnet => not same size for mult
+        if not (nw == 1 and nh == 1):
+            img = self.avg_pool(img)
 
+        img = img.squeeze(-1)
+        if self.config.img_encoder != "vit":
+            img = img.repeat(1, 1, txt.shape[1])
+        else:
+            img_dim = img.shape[2]
+            img = img.repeat(1, 1, txt.shape[1])
+            txt = txt.repeat(1, img_dim, 1)
+
+        txt = txt.permute(0, 2, 1)
+        img = img.permute(0, 2, 1)
+
+        mm_feat = torch.matmul(txt, img)
         # 1x1 conv and relu
-        mm_feat = self.transform_convs(self.bn(mm_feat))
+        mm_feat = self.bn(mm_feat)
+        mm_feat = self.transform_convs(mm_feat)
+
+        print(f"FUSION DONE!")
         return mm_feat
 
 
