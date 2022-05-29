@@ -68,9 +68,13 @@ class ConcatBiGRUFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
         config.fusion_out_dim = config.text_dim + config.img_dim
+        if config.img_encoder == "vit":
+            config.fusion_out_dim = config.text_dim
+
         self.fusion_dim = config.fusion_out_dim
         self.num_mmc_units = config.fusion_out_dim
 
+        self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
         self.bn = nn.BatchNorm2d(self.fusion_dim)
         self.transform_convs = []
         self.transform_convs.append(nn.Conv2d(self.fusion_dim, self.num_mmc_units, kernel_size=1))
@@ -88,13 +92,25 @@ class ConcatBiGRUFusion(FusionBase):
                             bidirectional=True)
 
     def forward(self, txt, img):
-        # concat fusion
-        _, _, nw, nh = img.shape  # @todo make sure all image features come in this shape => e.g. ViT is not!
-        _, tdim = txt.shape
-        txt_tile = txt.repeat(1, 1, nw * nh)
-        txt_tile = txt_tile.view(-1, tdim, nw, nh)
+        print(f"txt.shape: {txt.shape}")
+        print(f"img.shape: {img.shape}")
 
-        mm_feat = self.bn(torch.cat([img, txt_tile], dim=1))
+        # concat fusion
+        img = self.avg_pool(img)
+        _, _, nw, nh = img.shape
+        bs, tdim1, tdim2 = txt.shape
+
+        txt = txt.permute(0, 2, 1)
+        txt = torch.unsqueeze(txt, -1)
+
+        txt_tile = txt
+        if nw == 1 and nh == 1:
+            img = img.repeat(1, 1, tdim1, 1)
+            mm_feat = torch.cat([img, txt_tile], dim=1)
+        else:
+            mm_feat = torch.cat([img, txt_tile], dim=2)
+
+        mm_feat = self.bn(mm_feat)
         mm_feat = self.transform_convs(mm_feat)
 
         # recurrent fusion
@@ -103,6 +119,8 @@ class ConcatBiGRUFusion(FusionBase):
         mmc_feat = torch.transpose(mmc_feat, 1, 2)
         output, h = self.bigru(mmc_feat)
         h_flattened = torch.flatten(torch.transpose(h, 0, 1), start_dim=1)
+
+        print("FUSION DONE!")
 
         return h_flattened
 

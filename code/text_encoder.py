@@ -53,7 +53,7 @@ class SimpleTextEncoder(TextEncoder):
 class LstmEncoder(TextEncoder):
     def __init__(self, config):
         super().__init__(config)
-        config.text_dim = 1024
+        config.text_dim = 768
         self.config = config
         self.embedding = nn.Embedding(config.txt_token_count, config.lstm_embedding_dim)
         self.lstm = nn.LSTM(input_size=config.lstm_embedding_dim, hidden_size=config.text_dim, num_layers=2)
