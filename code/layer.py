@@ -73,6 +73,7 @@ class BertSelfAttention(nn.Module):
         return x.permute(0, 2, 1, 3)
 
     def forward(self, hidden_states, attention_mask):
+        hidden_states = hidden_states.permute(0, 2, 1)
         mixed_query_layer = self.query(hidden_states)
         mixed_key_layer = self.key(hidden_states)
         mixed_value_layer = self.value(hidden_states)
@@ -112,6 +113,7 @@ class BertSelfOutput(nn.Module):
     def forward(self, hidden_states, input_tensor):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.dropout(hidden_states)
+        input_tensor = input_tensor.permute(0, 2, 1)
         hidden_states = self.LayerNorm(hidden_states + input_tensor)
         return hidden_states
 

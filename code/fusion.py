@@ -227,18 +227,33 @@ class MCBFusion(FusionBase):
 class TransformerFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
-        config.fusion_out_dim = 768
+        config.fusion_out_dim = config.text_dim + config.img_dim
+        if config.img_encoder == "vit":
+            config.fusion_out_dim = config.text_dim
+
+        self.pre_fusion = ConcatFusion(config)
+        self.add_tensor = 0
+        if (config.fusion_out_dim % config.num_attention_heads) != 0:
+            self.add_tensor = config.num_attention_heads - (config.fusion_out_dim % config.num_attention_heads)
+            config.fusion_out_dim = config.fusion_out_dim + self.add_tensor
+
+        config.hidden_size = config.fusion_out_dim
         layer = BertLayer(config)
         self.layer = nn.ModuleList([copy.deepcopy(layer) for _ in range(config.fusion_transf_layers)])
         self.pooler = BertPooler(config)
 
     def forward(self, txt, img):
         output_all_encoded_layers = False
-        mm_feat = torch.cat([img, txt],
-                            dim=1)  # @todo error because img and txt have different dimensions => RuntimeError: Tensors must have same number of dimensions: got 3 and 4
-        attention_mask = torch.ones((txt.shape[0], txt.shape[1]), dtype=torch.long)
-        attention_mask = torch.cat((attention_mask,
-                                    torch.ones((attention_mask.shape[0], img.shape[1]), dtype=torch.long)), 1)
+        mm_feat = self.pre_fusion(txt, img)
+        mm_feat = mm_feat.squeeze()
+        attention_mask = torch.ones((mm_feat.shape[0], mm_feat.shape[2]), dtype=torch.long)
+
+        # make sure that mm_feat%12 = 0 and extend attention with zeros
+        if self.add_tensor != 0:
+            bs, d1, d2 = mm_feat.shape
+            tens_zeros = torch.zeros([bs, self.add_tensor, d2]).cuda()
+            mm_feat = torch.cat([mm_feat, tens_zeros], dim=1)
+
         extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
@@ -246,8 +261,10 @@ class TransformerFusion(FusionBase):
         hidden_states = mm_feat
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, extended_attention_mask)
+            hidden_states = hidden_states.permute(0, 2, 1)
             if output_all_encoded_layers:
                 all_encoder_layers.append(hidden_states)
+
         if not output_all_encoded_layers:
             return hidden_states  # @todo return tensor in size [16, 1] => not [16, x, 1]
         else:
