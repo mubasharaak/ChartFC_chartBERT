@@ -171,27 +171,28 @@ class MCBFusion(FusionBase):
         mcb_out_dim = 16000
         config.fusion_out_dim = 2048
         self.config = config
-        self.comp_layer1 = CompactBilinearPooling(config.fusion_out_dim, config.fusion_out_dim, mcb_out_dim,
+        self.comp_layer1 = CompactBilinearPooling(config.img_dim, config.img_dim, mcb_out_dim,
                                                   sum_pool=False)
         self.conv1 = nn.Conv2d(mcb_out_dim, 512, kernel_size=1, stride=1, padding=0)
         self.relu = nn.ReLU()
 
         # weights
         self.conv2 = nn.Conv2d(512, 1, kernel_size=1, stride=1, padding=0)
-        self.comp_layer2 = CompactBilinearPooling(config.fusion_out_dim, config.fusion_out_dim, mcb_out_dim,
+        self.comp_layer2 = CompactBilinearPooling(config.img_dim, config.img_dim, mcb_out_dim,
                                                   sum_pool=False)
 
     def forward(self, txt, img):
-        # L2 norm of img_feat
-        img_feat = torch.nn.functional.normalize(img)
+        _, img_dim, nw, nh = img.shape
+        bs, tdim1, tdim2 = txt.shape
 
-        # reshape and tile txt_feat
-        bs, _, nw, nh = img_feat.shape
-        txt_feat = torch.unsqueeze(txt, -1)
-        txt_feat = torch.unsqueeze(txt_feat, -1)
-        txt_tile = torch.tile(txt_feat, (int(self.config.img_dim / (self.config.text_dim * 2)), nh, nw))
+        # prepare txt input for first MCB
+        txt = txt.reshape(bs, -1)
+        txt = nn.Linear(tdim1*tdim2, img_dim)(txt.cpu()).cuda()
+        txt_tile = txt.repeat(1, 1, nw * nh)
+        txt_tile = txt_tile.reshape(bs, -1, nw, nh)
 
         # 1st MCB
+        img_feat = img
         out = self.comp_layer1(txt_tile, img_feat)
         out = out.permute(0, 3, 1, 2)
         out = torch.sqrt(F.relu(out)) - torch.sqrt(F.relu(-out))  # todo square root check initial code
@@ -206,21 +207,22 @@ class MCBFusion(FusionBase):
         weights = weights.reshape((-1, 1, nw, nh))  # or other way around nh, nw
 
         # apply weights to image vector
-        bottom1_resh = img_feat.view(bs, nw * nh, -1)
+        bottom1_resh = img_feat.contiguous().view(bs, nw * nh, -1)
         weights = weights.view(bs, -1, 1)
-
         res = torch.bmm(bottom1_resh.transpose(1, 2), weights)
         res = res.squeeze(2)
 
         # prepare data for 2nd MCB
         res_unsqueezed = res.unsqueeze(-1).unsqueeze(-1)
+        txt = txt.unsqueeze(-1).unsqueeze(-1)
 
         # 2nd call of MCB
-        final_out = self.comp_layer2(res_unsqueezed, txt_feat)
+        final_out = self.comp_layer2(txt, res_unsqueezed)
         final_out = final_out.squeeze()
         final_out = torch.sqrt(F.relu(final_out)) - torch.sqrt(F.relu(-final_out))  # square root
         final_out = torch.nn.functional.normalize(final_out)
 
+        print("FUSION DONE!")
         return final_out
 
 

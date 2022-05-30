@@ -38,7 +38,7 @@ class CompactBilinearPooling(nn.Module):
     """
 
     def __init__(self, input_dim1, input_dim2, output_dim,
-                 sum_pool=True, cuda=False,  # @todo change cuda=True for running on GPU
+                 sum_pool=True, cuda=True,
                  rand_h_1=None, rand_s_1=None, rand_h_2=None, rand_s_2=None):
         super(CompactBilinearPooling, self).__init__()
         self.input_dim1 = input_dim1
@@ -78,8 +78,7 @@ class CompactBilinearPooling(nn.Module):
         assert bottom1.size(1) == self.input_dim1 and \
                bottom2.size(1) == self.input_dim2
 
-        batch_size, _, height, width = bottom1.size()
-
+        batch_size, _, height, width = bottom2.size()
         bottom1_flat = bottom1.permute(0, 2, 3, 1).contiguous().view(-1, self.input_dim1)
         bottom2_flat = bottom2.permute(0, 2, 3, 1).contiguous().view(-1, self.input_dim2)
 
@@ -88,11 +87,9 @@ class CompactBilinearPooling(nn.Module):
 
         fft1 = afft.fft(sketch_1)
         fft2 = afft.fft(sketch_2)
-
         fft_product = fft1 * fft2
 
         cbp_flat = afft.ifft(fft_product).real
-
         cbp = cbp_flat.view(batch_size, height, width, self.output_dim)
 
         if self.sum_pool:
