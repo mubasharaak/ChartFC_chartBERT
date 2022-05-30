@@ -55,7 +55,7 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
         loss = criterion(p, a)
         optimizer.zero_grad()
         loss.backward()
-        nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+        # nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
         optimizer.step()
 
         p_scale = torch.sigmoid(p)
