@@ -41,7 +41,7 @@ class ConcatFusion(FusionBase):
         self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
         self.avg_pool_output = nn.AvgPool2d((3, 3), stride=(100, 1), padding=(1, 1))
 
-    def forward(self, txt, img):
+    def forward(self, txt, img, apply_pooling=True):
         img = self.avg_pool(img)
         _, _, nw, nh = img.shape
         bs, tdim1, tdim2 = txt.shape
@@ -58,7 +58,7 @@ class ConcatFusion(FusionBase):
 
         mm_feat = self.bn(mm_feat)
         mm_feat = self.transform_convs(mm_feat)
-        if len(mm_feat.shape) == 4:
+        if len(mm_feat.shape) == 4 and apply_pooling:
             mm_feat = self.avg_pool_output(mm_feat).squeeze()
 
         return mm_feat
@@ -263,10 +263,11 @@ class TransformerFusion(FusionBase):
         layer = BertLayer(config)
         self.layer = nn.ModuleList([copy.deepcopy(layer) for _ in range(config.fusion_transf_layers)])
         self.pooler = BertPooler(config)
+        self.avg_pool_output = nn.AvgPool2d((3, 3), stride=(100, 1), padding=(1, 1))
 
     def forward(self, txt, img):
         output_all_encoded_layers = False
-        mm_feat = self.pre_fusion(txt, img)
+        mm_feat = self.pre_fusion(txt, img, apply_pooling=False)
         mm_feat = mm_feat.squeeze()
         attention_mask = torch.ones((mm_feat.shape[0], mm_feat.shape[2]), dtype=torch.long)
 
@@ -287,10 +288,10 @@ class TransformerFusion(FusionBase):
             if output_all_encoded_layers:
                 all_encoder_layers.append(hidden_states)
 
-        print("FUSION DONE!")
-        print(f"fusion output: {hidden_states.shape}")
+        hidden_states = self.avg_pool_output(hidden_states.permute(0, 2, 1))
+        hidden_states = hidden_states.squeeze()
 
         if not output_all_encoded_layers:
-            return hidden_states  # @todo return tensor in size [16, 1] => not [16, x, 1]
+            return hidden_states
         else:
             return all_encoder_layers
