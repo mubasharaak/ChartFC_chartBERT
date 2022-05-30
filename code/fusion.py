@@ -39,6 +39,7 @@ class ConcatFusion(FusionBase):
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
         self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
+        self.avg_pool_output = nn.AvgPool2d((3, 3), stride=(100, 1), padding=(1, 1))
 
     def forward(self, txt, img):
         img = self.avg_pool(img)
@@ -57,18 +58,23 @@ class ConcatFusion(FusionBase):
 
         mm_feat = self.bn(mm_feat)
         mm_feat = self.transform_convs(mm_feat)
+        if len(mm_feat.shape) == 4:
+            mm_feat = self.avg_pool_output(mm_feat).squeeze()
+
         return mm_feat
 
 
 class ConcatBiGRUFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
-        config.fusion_out_dim = config.text_dim + config.img_dim
         if config.img_encoder == "vit":
-            config.fusion_out_dim = config.text_dim
-
-        self.fusion_dim = config.fusion_out_dim
-        self.num_mmc_units = config.fusion_out_dim
+            config.fusion_out_dim = 2*config.text_dim
+            self.fusion_dim = config.text_dim
+            self.num_mmc_units = config.text_dim
+        else:
+            config.fusion_out_dim = 2*(config.text_dim + config.img_dim)
+            self.fusion_dim = config.text_dim + config.img_dim
+            self.num_mmc_units = config.text_dim + config.img_dim
 
         self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
         self.bn = nn.BatchNorm2d(self.fusion_dim)
@@ -113,13 +119,16 @@ class ConcatBiGRUFusion(FusionBase):
         output, h = self.bigru(mmc_feat)
         h_flattened = torch.flatten(torch.transpose(h, 0, 1), start_dim=1)
 
+        print("FUSION DONE!")
+        print(f"fusion output: {h_flattened.shape}")
+
         return h_flattened
 
 
 class MultiplicationFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
-        config.fusion_out_dim = config.img_dim
+        config.fusion_out_dim = config.img_dim + config.text_dim
         self.config = config
 
         self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
@@ -134,6 +143,13 @@ class MultiplicationFusion(FusionBase):
             self.transform_convs.append(nn.Conv1d(self.num_mmc_units, self.num_mmc_units, kernel_size=1))
             self.transform_convs.append(nn.ReLU())
         self.transform_convs = nn.Sequential(*self.transform_convs)
+
+        if config.img_encoder == "resnet":
+            self.lin1 = nn.Linear(config.img_dim, int(config.img_dim/4))
+            self.lin2 = nn.Linear(int(config.img_dim/4)*config.text_dim, config.img_dim + config.text_dim)
+        else:
+            self.lin1 = nn.Linear(config.img_dim, int(config.img_dim/2))
+            self.lin2 = nn.Linear(int(config.img_dim/2)*config.text_dim, config.img_dim + config.text_dim)
 
     def forward(self, txt, img):
         print(f"txt.shape: {txt.shape}")
@@ -156,12 +172,19 @@ class MultiplicationFusion(FusionBase):
         txt = txt.permute(0, 2, 1)
         img = img.permute(0, 2, 1)
 
+        img = self.lin1(img)
         mm_feat = torch.matmul(txt, img)
         # 1x1 conv and relu
         mm_feat = self.bn(mm_feat)
         mm_feat = self.transform_convs(mm_feat)
+        mm_feat = mm_feat.reshape(bs, -1)
 
-        print(f"FUSION DONE!")
+        # dimensionality reduction
+        mm_feat = self.lin2(mm_feat)
+
+        print("FUSION DONE!")
+        print(f"fusion output: {mm_feat.shape}")
+
         return mm_feat
 
 
@@ -223,6 +246,8 @@ class MCBFusion(FusionBase):
         final_out = torch.nn.functional.normalize(final_out)
 
         print("FUSION DONE!")
+        print(f"fusion output: {final_out.shape}")
+
         return final_out
 
 
@@ -266,6 +291,9 @@ class TransformerFusion(FusionBase):
             hidden_states = hidden_states.permute(0, 2, 1)
             if output_all_encoded_layers:
                 all_encoder_layers.append(hidden_states)
+
+        print("FUSION DONE!")
+        print(f"fusion output: {hidden_states.shape}")
 
         if not output_all_encoded_layers:
             return hidden_states  # @todo return tensor in size [16, 1] => not [16, x, 1]
