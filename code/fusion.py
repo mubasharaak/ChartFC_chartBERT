@@ -145,16 +145,13 @@ class MultiplicationFusion(FusionBase):
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
         if config.img_encoder == "resnet":
-            self.lin1 = nn.Linear(config.img_dim, int(config.img_dim/4))
-            self.lin2 = nn.Linear(int(config.img_dim/4)*config.text_dim, config.img_dim + config.text_dim)
+            self.lin1 = nn.Linear(config.img_dim, int(config.img_dim/8))
+            self.lin2 = nn.Linear(int(config.img_dim/8)*config.text_dim, config.img_dim + config.text_dim)
         else:
             self.lin1 = nn.Linear(config.img_dim, int(config.img_dim/2))
             self.lin2 = nn.Linear(int(config.img_dim/2)*config.text_dim, config.img_dim + config.text_dim)
 
     def forward(self, txt, img):
-        print(f"txt.shape: {txt.shape}")
-        print(f"img.shape: {img.shape}")
-
         # reshape and tile txt_feat
         bs, i_dim, nw, nh = img.shape
 
@@ -182,9 +179,6 @@ class MultiplicationFusion(FusionBase):
         # dimensionality reduction
         mm_feat = self.lin2(mm_feat)
 
-        print("FUSION DONE!")
-        print(f"fusion output: {mm_feat.shape}")
-
         return mm_feat
 
 
@@ -192,7 +186,7 @@ class MCBFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
         mcb_out_dim = 16000
-        config.fusion_out_dim = 2048
+        config.fusion_out_dim = 3000
         self.config = config
         self.comp_layer1 = CompactBilinearPooling(config.img_dim, config.img_dim, mcb_out_dim,
                                                   sum_pool=False)
@@ -203,6 +197,7 @@ class MCBFusion(FusionBase):
         self.conv2 = nn.Conv2d(512, 1, kernel_size=1, stride=1, padding=0)
         self.comp_layer2 = CompactBilinearPooling(config.img_dim, config.img_dim, mcb_out_dim,
                                                   sum_pool=False)
+        self.lin = nn.Linear(mcb_out_dim, config.fusion_out_dim)
 
     def forward(self, txt, img):
         _, img_dim, nw, nh = img.shape
@@ -245,8 +240,8 @@ class MCBFusion(FusionBase):
         final_out = torch.sqrt(F.relu(final_out)) - torch.sqrt(F.relu(-final_out))  # square root
         final_out = torch.nn.functional.normalize(final_out)
 
-        print("FUSION DONE!")
-        print(f"fusion output: {final_out.shape}")
+        # final lin layer
+        final_out = self.lin(final_out)
 
         return final_out
 
