@@ -119,9 +119,6 @@ class ConcatBiGRUFusion(FusionBase):
         output, h = self.bigru(mmc_feat)
         h_flattened = torch.flatten(torch.transpose(h, 0, 1), start_dim=1)
 
-        print("FUSION DONE!")
-        print(f"fusion output: {h_flattened.shape}")
-
         return h_flattened
 
 
