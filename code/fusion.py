@@ -194,15 +194,18 @@ class MCBFusion(FusionBase):
         self.conv2 = nn.Conv2d(512, 1, kernel_size=1, stride=1, padding=0)
         self.comp_layer2 = CompactBilinearPooling(config.img_dim, config.img_dim, mcb_out_dim,
                                                   sum_pool=False)
-        self.lin = nn.Linear(mcb_out_dim, config.fusion_out_dim)
+        self.avg_pool = nn.AvgPool2d((3, 3), stride=(100, 1), padding=(1, 1))
+        self.lin1 = nn.Linear(config.text_dim, config.img_dim)
+        self.lin2 = nn.Linear(mcb_out_dim, config.fusion_out_dim)
 
     def forward(self, txt, img):
         _, img_dim, nw, nh = img.shape
         bs, tdim1, tdim2 = txt.shape
 
         # prepare txt input for first MCB
+        txt = self.avg_pool(txt)
         txt = txt.reshape(bs, -1)
-        txt = nn.Linear(tdim1*tdim2, img_dim)(txt.cpu()).cuda()
+        # txt = self.lin1(txt)
         txt_tile = txt.repeat(1, 1, nw * nh)
         txt_tile = txt_tile.reshape(bs, -1, nw, nh)
 
@@ -238,7 +241,7 @@ class MCBFusion(FusionBase):
         final_out = torch.nn.functional.normalize(final_out)
 
         # final lin layer
-        final_out = self.lin(final_out)
+        final_out = self.lin2(final_out)
 
         return final_out
 
