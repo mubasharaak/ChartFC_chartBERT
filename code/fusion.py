@@ -205,7 +205,7 @@ class MCBFusion(FusionBase):
         # prepare txt input for first MCB
         txt = self.avg_pool(txt)
         txt = txt.reshape(bs, -1)
-        # txt = self.lin1(txt)
+        txt = self.lin1(txt)
         txt_tile = txt.repeat(1, 1, nw * nh)
         txt_tile = txt_tile.reshape(bs, -1, nw, nh)
 
