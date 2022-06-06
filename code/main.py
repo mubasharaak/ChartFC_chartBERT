@@ -51,7 +51,7 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
         i = img.to("cuda")
         a = label.to("cuda")
 
-        p = model(i, txt, txt_encode, txt_len)
+        p = model(i, txt, txt_encode, txt_len, ocr, ocrl)
         loss = criterion(p, a)
         optimizer.zero_grad()
         loss.backward()
@@ -138,7 +138,7 @@ def predict(model, dataloaders, epoch, steps = "total"):
             for txt, txt_encode, a, i, img_path, qid, txt_len, ocr, ocrl in data:
                 i = i.to("cuda")
                 a = a.to("cuda")
-                p = model(i, txt, txt_encode, txt_len)
+                p = model(i, txt, txt_encode, txt_len, ocr, ocrl)
                 _, idx = p.max(dim=1)
 
                 p_scale = torch.sigmoid(p)

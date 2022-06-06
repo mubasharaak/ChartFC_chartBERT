@@ -61,7 +61,7 @@ lr_decay_epochs = range(15, 125, lr_decay_step)
 lr_warmup_steps = []
 
 # utils
-use_ocr = False
+use_ocr = True
 data_subset = 1  # Random Fraction of data to use for training
 data_sampling_seed = 666
 
