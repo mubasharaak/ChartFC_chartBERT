@@ -8,11 +8,11 @@ class Classifier(nn.Module):
         super(Classifier, self).__init__()
         self.config = config
         self.classifier = nn.Sequential(
-            nn.Linear(config.fusion_out_dim * 2, config.fusion_out_dim * 4),
+            nn.Linear(config.fusion_out_dim, config.fusion_out_dim * 2),
             nn.GELU(),
             # nn.Dropout(),
-            FusedLayerNorm(config.fusion_out_dim * 4, eps=1e-12),
-            nn.Linear(config.fusion_out_dim * 4, config.num_classes)
+            FusedLayerNorm(config.fusion_out_dim * 2, eps=1e-12),
+            nn.Linear(config.fusion_out_dim * 2, config.num_classes)
         )
 
     def forward(self, mm_features):

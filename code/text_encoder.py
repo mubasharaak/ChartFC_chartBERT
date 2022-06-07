@@ -80,7 +80,7 @@ class BertEncoder(TextEncoder):
         self.bert_encoder = BertModel.from_pretrained(config.pretrained_model, output_hidden_states=True)
 
     def forward(self, txt, txt_encode, txt_len):
-        embeddings = self.tokenizer.batch_encode_plus(list(txt), padding='longest', return_tensors='pt',
+        embeddings = self.tokenizer.batch_encode_plus(list(txt), padding='longest', truncation="longest_first", return_tensors='pt',
                                                       return_attention_mask=True)
         embeddings = embeddings.to('cuda')
         out = self.bert_encoder(**embeddings)

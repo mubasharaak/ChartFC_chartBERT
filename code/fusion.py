@@ -101,8 +101,8 @@ class ConcatBiGRUFusion(FusionBase):
 
         txt = txt.permute(0, 2, 1)
         txt = torch.unsqueeze(txt, -1)
-
         txt_tile = txt
+
         if nw == 1 and nh == 1:
             img = img.repeat(1, 1, tdim1, 1)
             mm_feat = torch.cat([img, txt_tile], dim=1)

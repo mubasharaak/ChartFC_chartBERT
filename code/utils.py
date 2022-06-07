@@ -10,6 +10,59 @@ from nltk.tokenize import word_tokenize
 from torch.utils.data import Dataset, DataLoader
 
 
+num_dict = {
+    1: "one",
+    2: "two",
+    3: "three",
+    4: "four",
+    5: "five",
+    6: "six",
+    7: "seven",
+    8: "eight",
+    9: "nine",
+    10: "ten",
+    11: "eleven",
+    12: "twelve",
+    13: "thirteen",
+    14: "fourteen",
+    15: "fifteen",
+    16: "sixteen",
+    17: "seventeen",
+    18: "eighteen",
+    19: "nineteen",
+    20: "twenty",
+    21: "twenty-one",
+    22: "twenty-two",
+    23: "twenty-three",
+    24: "twenty-four",
+    25: "twenty-five",
+    26: "twenty-six",
+    27: "twenty-seven",
+    28: "twenty-eight",
+    29: "twenty-nine",
+    30: "thirty",
+    31: "thirty-one",
+    32: "thirty-two",
+    33: "thirty-three",
+    34: "thirty-four",
+    35: "thirty-five",
+    36: "thirty-six",
+    37: "thirty-seven",
+    38: "thirty-eight",
+    39: "thirty-nine",
+    40: "forty",
+    41: "forty-one",
+    42: "forty-two",
+    43: "forty-three",
+    44: "forty-four",
+    45: "forty-five",
+    46: "forty-six",
+    47: "forty-seven",
+    48: "forty-eight",
+    49: "forty-nine",
+    50: "fifty",
+}
+
 def encode_txt(txt, txt2idx, maxlen):
     """
     Encodes text input 'txt' into word vectors
@@ -85,9 +138,16 @@ class ChartFCDataset(Dataset):
         if self.config.use_ocr:
             # Extract and prepare OCR text
             ocr_df = pd.DataFrame(self.dataset[index]['img_text'], columns=['x', 'y', 'w', 'h', 'x_label', 'y_label', 'text'])
-            ocr_df = ocr_df.sort_values(by=['y', 'x']) # order by (1) x axis (=row) and by (2) y axis
-            ocr_text = list(ocr_df["text"])
-            ocr_text = " ".join([str(entry) for entry in ocr_text])
+
+            if self.config.ocr_type == "concat":
+                ocr_df = ocr_df.sort_values(by=['y', 'x']) # order by (1) x axis (=row) and by (2) y axis
+                ocr_text = list(ocr_df["text"])
+                ocr_text = " ".join([str(entry) for entry in ocr_text])
+            elif self.config.ocr_type == "template_sentence":
+                ocr_text = extract_ocr(ocr_df, self.config.ocr_type)
+            else:
+                return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, "", 0  # no ocr text returned
+
             ocr_text_len = len(ocr_text)
             return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, ocr_text, ocr_text_len
         else:
@@ -100,6 +160,99 @@ def tokenize(entry):
     ocr_text = " ".join(ocr_text)
     text = text + " " + ocr_text # using both claim and ocr text to create LUT for LSTM encoder
     return word_tokenize(text)
+
+
+def extract_ocr(ocr_df: pd.DataFrame, extraction_type: str):
+    # sample = entry["img_text"]
+    sample_df = ocr_df
+
+    sample_df["x_mid"] = sample_df["x"] + (sample_df["w"] / 2)
+    sample_df["y_mid"] = sample_df["y"] + (sample_df["h"] / 2)
+    a = list(sample_df["x_mid"])
+    sample_df["x_norm"] = [round(x / 5, 0) * 5 for x in a]
+    a = list(sample_df["y_mid"])
+    sample_df["y_norm"] = [round(x / 5, 0) * 5 for x in a]
+
+    # filter based on column "x_label"/"y_label" if entry is a label
+    x_label = sample_df[(sample_df["x_label"] == 1)]
+    x_label = " ".join([str(x) for x in list(x_label["text"])])
+    y_label = sample_df[sample_df["y_label"] == 1]
+    y_label = " ".join([str(x) for x in list(y_label["text"])])
+    column_names = [x_label, y_label]
+
+    sample_df = sample_df.sort_values(by=["y_norm", "x_norm"])
+    row_num = 0
+
+    if extraction_type == "concatenation":
+        img_text = sample_df["text"]  # is already sorted according to y and x coordinates
+        evidence_content = " ; ".join(list([str(x) for x in img_text]))
+    elif extraction_type == "template_sentence":
+        sample_df_no_labels = sample_df[(sample_df["x_label"] == 0) & (sample_df["y_label"] == 0)]  # take out x and y labels
+        sentences_list = []
+        y_temp = 0
+        for index, row in sample_df_no_labels.iterrows():
+            if y_temp == 0:
+                # save the first y_mid coordinate
+                row_num += 1
+                y_temp = row["y_mid"]
+                row_temp = [row.to_dict()]
+            else:
+                # save all entries with -/+ 5 pixels for y_mid
+                if (y_temp - 5) < row["y_mid"] < (y_temp + 5):
+                    row_temp.append(row.to_dict())
+                    y_temp = row["y_mid"]
+                else:
+                    # transfer previous entries to sentences_list
+                    row_temp = pd.DataFrame(row_temp)
+                    row_temp = row_temp.sort_values(by=["x_mid"])  # sort previous entries by their x_mid
+                    row_temp = [str(x) for x in list(row_temp["text"])]
+                    if len(row_temp) > 1:
+                        # create template based sentence
+                        # sent_temp_0 = str(row_num) + " " + str(0) + " " + str(row[4]) + " " + str(row[5]) + " " + " ".join(row_temp[:-1])
+                        # sent_temp_1 = str(row_num) + " " + str(1) + " " + str(row[4]) + " " + str(row[5]) + " " + str(row_temp[-1])
+                        sent_temp = "entry {} is: {} is {}; {} is {}.".format(num_dict[row_num], y_label,
+                                                                                 " ".join(row_temp[:-1]), x_label,
+                                                                                 row_temp[-1])
+                        # sent_temp = "{} is {} when {} is {}.".format(y_label, " ".join(row_temp[:-1]), x_label,
+                        #                                              row_temp[-1])
+                        row_num += 1
+                        sentences_list.append(sent_temp)
+                        # sentences_list.append(sent_temp_0)
+                        # sentences_list.append(sent_temp_1)
+                    # new row
+                    y_temp = row["y_mid"]
+                    row_temp = [row.to_dict()]
+        # save final entry
+        row_temp = pd.DataFrame(row_temp)
+        row_temp = row_temp.sort_values(by=["x_mid"])  # sort previous entries by their x_mid
+        row_temp = [str(x) for x in list(row_temp["text"])]
+        if len(row_temp) > 1:
+            sent_temp = "entry {} is : {} is {} ; {} is {} .".format(num_dict[row_num], y_label,
+                                                                     " ".join(row_temp[:-1]), x_label,
+                                                                     row_temp[-1])
+            # sent_temp = "{} is {} when {} is {}.".format(y_label, " ".join(row_temp[:-1]), x_label, row_temp[-1])
+            # sent_temp_0 = str(row_num) + " " + str(0) + " " + str(row[4]) + " " + str(row[5]) + " " + " ".join(
+            #     row_temp[:-1])
+            # sent_temp_1 = str(row_num) + " " + str(1) + " " + str(row[4]) + " " + str(row[5]) + " " + str(
+            #     row_temp[-1])
+
+            sentences_list.append(sent_temp)
+            # sentences_list.append(sent_temp_0)
+            # sentences_list.append(sent_temp_1)
+
+        evidence_content = " ".join(sentences_list)
+        # evidence_content = "###".join(sentences_list)
+
+    else:  # capture coordinates
+        entries = []
+        for j, row in sample_df.iterrows():
+            row_entry = str(int(row["x_norm"])) + " " + str(int(row["y_norm"])) + " " + str(row[4]) + " " + \
+                        str(row[5]) + " " + str(row[6])
+            entries.append(row_entry)
+
+        evidence_content = "###".join(entries)
+
+    return evidence_content
 
 
 def build_lut(dataset):
