@@ -146,12 +146,12 @@ class ChartFCDataset(Dataset):
             elif self.config.ocr_type == "template_sentence":
                 ocr_text = extract_ocr(ocr_df, self.config.ocr_type)
             else:
-                return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, "", 0  # no ocr text returned
+                return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, None, 0  # no ocr text returned
 
             ocr_text_len = len(ocr_text)
             return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, ocr_text, ocr_text_len
         else:
-            return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, "", 0  # no ocr text returned
+            return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, None, 0  # no ocr text returned
 
 
 def tokenize(entry):
@@ -163,7 +163,6 @@ def tokenize(entry):
 
 
 def extract_ocr(ocr_df: pd.DataFrame, extraction_type: str):
-    # sample = entry["img_text"]
     sample_df = ocr_df
 
     sample_df["x_mid"] = sample_df["x"] + (sample_df["w"] / 2)
@@ -208,17 +207,11 @@ def extract_ocr(ocr_df: pd.DataFrame, extraction_type: str):
                     row_temp = [str(x) for x in list(row_temp["text"])]
                     if len(row_temp) > 1:
                         # create template based sentence
-                        # sent_temp_0 = str(row_num) + " " + str(0) + " " + str(row[4]) + " " + str(row[5]) + " " + " ".join(row_temp[:-1])
-                        # sent_temp_1 = str(row_num) + " " + str(1) + " " + str(row[4]) + " " + str(row[5]) + " " + str(row_temp[-1])
                         sent_temp = "entry {} is: {} is {}; {} is {}.".format(num_dict[row_num], y_label,
                                                                                  " ".join(row_temp[:-1]), x_label,
                                                                                  row_temp[-1])
-                        # sent_temp = "{} is {} when {} is {}.".format(y_label, " ".join(row_temp[:-1]), x_label,
-                        #                                              row_temp[-1])
                         row_num += 1
                         sentences_list.append(sent_temp)
-                        # sentences_list.append(sent_temp_0)
-                        # sentences_list.append(sent_temp_1)
                     # new row
                     y_temp = row["y_mid"]
                     row_temp = [row.to_dict()]
@@ -230,19 +223,10 @@ def extract_ocr(ocr_df: pd.DataFrame, extraction_type: str):
             sent_temp = "entry {} is : {} is {} ; {} is {} .".format(num_dict[row_num], y_label,
                                                                      " ".join(row_temp[:-1]), x_label,
                                                                      row_temp[-1])
-            # sent_temp = "{} is {} when {} is {}.".format(y_label, " ".join(row_temp[:-1]), x_label, row_temp[-1])
-            # sent_temp_0 = str(row_num) + " " + str(0) + " " + str(row[4]) + " " + str(row[5]) + " " + " ".join(
-            #     row_temp[:-1])
-            # sent_temp_1 = str(row_num) + " " + str(1) + " " + str(row[4]) + " " + str(row[5]) + " " + str(
-            #     row_temp[-1])
 
             sentences_list.append(sent_temp)
-            # sentences_list.append(sent_temp_0)
-            # sentences_list.append(sent_temp_1)
 
         evidence_content = " ".join(sentences_list)
-        # evidence_content = "###".join(sentences_list)
-
     else:  # capture coordinates
         entries = []
         for j, row in sample_df.iterrows():

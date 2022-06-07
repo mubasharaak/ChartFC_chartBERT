@@ -28,16 +28,17 @@ class ChartFCBaseline(nn.Module):
         self.fusion = config.COMPONENTS[config.fusion_method](config)
         self.classifier = Classifier(config)
 
-    def forward(self, img, txt, txt_encode, txt_len, ocr, ocr_len):
+    def forward(self, img, txt, txt_encode, txt_len, ocr=None, ocr_len=None):
         # Unimodal encoding
-        txt_features = self.text_encoder(txt, txt_encode, txt_len)
-        ocr_features = self.text_encoder(ocr, None, txt_len)
+        if ocr:
+            txt_features = self.text_encoder(txt, txt_encode, txt_len, ocr)
+        else:
+            txt_features = self.text_encoder(txt, txt_encode, txt_len)
+
         img_features = self.image_encoder(img)
 
         # Fusion
-        mm_features_1 = self.fusion(txt_features, img_features)
-        mm_features_2 = self.fusion(ocr_features, img_features)
-        mm_features = torch.cat([mm_features_1, mm_features_2], dim=1)
+        mm_features = self.fusion(txt_features, img_features)
 
         # Classification
         out = self.classifier(mm_features)
