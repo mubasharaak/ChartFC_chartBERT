@@ -146,12 +146,12 @@ class ChartFCDataset(Dataset):
             elif self.config.ocr_type == "template_sentence":
                 ocr_text = extract_ocr(ocr_df, self.config.ocr_type)
             else:
-                return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, None, 0  # no ocr text returned
+                return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, "", 0  # no ocr text returned
 
             ocr_text_len = len(ocr_text)
             return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, ocr_text, ocr_text_len
         else:
-            return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, None, 0  # no ocr text returned
+            return txt, txt_encode, label, img_tensor, img_path, idx, txt_len, "", 0  # no ocr text returned
 
 
 def tokenize(entry):
@@ -182,9 +182,9 @@ def extract_ocr(ocr_df: pd.DataFrame, extraction_type: str):
     sample_df = sample_df.sort_values(by=["y_norm", "x_norm"])
     row_num = 0
 
-    if extraction_type == "concatenation":
+    if extraction_type == "concat":
         img_text = sample_df["text"]  # is already sorted according to y and x coordinates
-        evidence_content = " ; ".join(list([str(x) for x in img_text]))
+        evidence_content = "; ".join(list([str(x) for x in img_text]))
     elif extraction_type == "template_sentence":
         sample_df_no_labels = sample_df[(sample_df["x_label"] == 0) & (sample_df["y_label"] == 0)]  # take out x and y labels
         sentences_list = []

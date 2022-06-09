@@ -163,6 +163,11 @@ def predict(model, dataloaders, epoch, steps = "total"):
                     f', Accuracy: {round(correct / total, 3)}, '
                 )
 
+        if args.evaluate:
+            result_file = os.path.join(CONFIG.expt_dir, f'results_detail.json')
+            json.dump(results, open(result_file, 'w'))
+            print(f"Saved {result_file}")
+
         f1_result_macro = f1_score(y_true, y_pred, average="macro")
         f1_result_micro = f1_score(y_true, y_pred, average="micro")
         precision_macro = average_precision_score(y_true, y_pred, average="macro")
@@ -285,8 +290,19 @@ def main():
         optimizer.load_state_dict(resumed_data['optim_state_dict'])
         start_epoch = resumed_data['epoch']
 
-    # start training
-    train(CONFIG, model, train_data, val_data, test_data, optimizer, criterion, start_epoch)
+    if not args.evaluate:
+        # start training
+        train(CONFIG, model, train_data, val_data, test_data, optimizer, criterion, start_epoch)
+    else:
+        evaluate_saved(model, test_data)
+
+
+def evaluate_saved(net, dataloader):
+    weights_path = os.path.join(CONFIG.expt_dir, 'best_model.pth')
+    saved = torch.load(weights_path)
+    net.eval()
+    net.load_state_dict(saved['model_state_dict'])
+    predict(net, dataloader, saved['epoch'], CONFIG.expt_dir)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ val_files['ChartFC'] = {'val': 'valid_barplot_seaborn_imgtext_tesseract.json'}
 
 test_files = dict()
 test_files['ChartFC'] = {'test': 'test_barplot_seaborn_imgtext_tesseract.json'}
+# test_files['ChartFC'] = {'test': 'labelled_test_sample_barplot_seaborn_imgtext_tesseract.json'}
 
 transform_combo_train = dict()
 transform_combo_test = dict()
@@ -52,7 +53,7 @@ optimizer = torch.optim.Adamax
 test_interval = 1  # In epochs
 test_every_epoch_after = 1
 max_epochs = 15
-batch_size = 16
+batch_size = 8
 dropout_classifier = 0.3
 lr = 5e-5
 lr_decay_step = 2  # Decay every this many epochs

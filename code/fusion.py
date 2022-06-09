@@ -39,7 +39,7 @@ class ConcatFusion(FusionBase):
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
         self.avg_pool = nn.AvgPool2d((3, 3), stride=(15, 20), padding=(1, 1))
-        self.avg_pool_output = nn.AvgPool2d((3, 3), stride=(100, 1), padding=(1, 1))
+        self.avg_pool_output = nn.AvgPool2d((3, 3), stride=(512, 1), padding=(1, 1))
 
     def forward(self, txt, img, apply_pooling=True):
         img = self.avg_pool(img)
