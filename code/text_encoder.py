@@ -29,7 +29,7 @@ class SimpleTextEncoder(TextEncoder):
         self.LayerNorm = FusedLayerNorm(config.text_dim, eps=1e-12)
         self.dropout = nn.Dropout(0.3)
 
-    def forward(self, txt, txt_encode, txt_len):
+    def forward(self, txt, txt_encode, txt_len, ocr=None):
         embeddings = self.tokenizer.batch_encode_plus(list(txt), padding='longest', return_tensors='pt',
                                                       return_attention_mask=True)
         position_ids = torch.arange(0, embeddings["input_ids"].size(1), dtype=torch.long).unsqueeze(0).repeat(
@@ -59,7 +59,7 @@ class LstmEncoder(TextEncoder):
         self.lstm = nn.LSTM(input_size=config.lstm_embedding_dim, hidden_size=config.text_dim, num_layers=2)
         self.drop = nn.Dropout(0.3)
 
-    def forward(self, txt, txt_encode, txt_len):
+    def forward(self, txt, txt_encode, txt_len, ocr=None):
         txt_encode = txt_encode.cuda()
         embedding = self.embedding(txt_encode)
         embedding = torch.tanh(embedding)

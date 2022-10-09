@@ -4,20 +4,18 @@ from torchvision import transforms
 import text_encoder, image_encoder, fusion
 
 
-# @todo try to load the config and check if changes to config are taking over by other
-
 # main
 expt_dir = ""  # directory for results saving
 config_location = '/scratch/users/k20116188/prefil/configs/config.py'
 
 train_file = dict()
-train_file['ChartFC'] = 'train_barplot_seaborn_imgtext_tesseract.json'
+train_file['ChartFC'] = 'train_barplot_seaborn_diverse_charts.json'
 
 val_files = dict()
-val_files['ChartFC'] = {'val': 'valid_barplot_seaborn_imgtext_tesseract.json'}
+val_files['ChartFC'] = {'val': 'valid_barplot_seaborn_diverse_charts.json'}
 
 test_files = dict()
-test_files['ChartFC'] = {'test': 'test_barplot_seaborn_imgtext_tesseract.json'}
+test_files['ChartFC'] = {'test': 'test_barplot_seaborn_diverse_charts.json'}
 # test_files['ChartFC'] = {'test': 'labelled_test_sample_barplot_seaborn_imgtext_tesseract.json'}
 
 transform_combo_train = dict()
@@ -52,7 +50,7 @@ optimizer = torch.optim.Adamax
 # hyperparameters
 test_interval = 1  # In epochs
 test_every_epoch_after = 1
-max_epochs = 15
+max_epochs = 10
 batch_size = 8
 dropout_classifier = 0.3
 lr = 5e-5
@@ -62,8 +60,8 @@ lr_decay_epochs = range(15, 125, lr_decay_step)
 lr_warmup_steps = []
 
 # utils
-use_ocr = True
-ocr_type = "template_sentence"
+use_ocr = False
+ocr_type = "concat"
 data_subset = 1  # Random Fraction of data to use for training
 data_sampling_seed = 666
 

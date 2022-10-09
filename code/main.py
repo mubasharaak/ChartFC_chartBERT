@@ -50,7 +50,6 @@ def train_epoch(model, train_loader, criterion, optimizer, epoch, config, val_lo
     for batch_idx, (txt, txt_encode, label, img, img_path, qid, txt_len, ocr, ocrl) in enumerate(train_loader):
         i = img.to("cuda")
         a = label.to("cuda")
-
         p = model(i, txt, txt_encode, txt_len, ocr, ocrl)
         loss = criterion(p, a)
         optimizer.zero_grad()
@@ -139,7 +138,10 @@ def predict(model, dataloaders, epoch, steps = "total"):
                 i = i.to("cuda")
                 a = a.to("cuda")
                 p = model(i, txt, txt_encode, txt_len, ocr, ocrl)
-                _, idx = p.max(dim=1)
+                try:
+                    _, idx = p.max(dim=1)
+                except Exception as e:
+                    p = torch.unsqueeze(p, 0)
 
                 p_scale = torch.sigmoid(p)
                 pred_class = p_scale >= 0.5
@@ -155,12 +157,14 @@ def predict(model, dataloaders, epoch, steps = "total"):
                 # for calculating metrices later
                 a_numpy = a.cpu().detach().numpy()
                 pred_class_numpy = pred_class.float().cpu().detach().numpy()
+                f1_result_macro = f1_score(a_numpy, pred_class_numpy, average="macro")
                 y_true.extend(a_numpy)
                 y_pred.extend(pred_class_numpy)
 
                 inline_print(
                     f'Running {data.dataset.split}, Processed {total} of {len(data) * data.batch_size} '
                     f', Accuracy: {round(correct / total, 3)}, '
+                    f'F1 macro: {round(f1_result_macro, 3)}'
                 )
 
         if args.evaluate:
@@ -318,7 +322,7 @@ if __name__ == '__main__':
 
     # directories
     CONFIG.root = args.data_root
-    CONFIG.expt_dir = os.path.join(args.data_root, 'experiments', f"{args.txt_encoder}_{args.img_encoder}_{args.fusion}")
+    CONFIG.expt_dir = os.path.join(args.data_root, 'experiments_diverse_charts', f"{args.txt_encoder}_{args.img_encoder}_{args.fusion}")
 
     # hyperparameters no manual setting of hyperparameters
     main()
