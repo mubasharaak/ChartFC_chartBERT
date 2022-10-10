@@ -138,9 +138,7 @@ def predict(model, dataloaders, epoch, steps = "total"):
                 i = i.to("cuda")
                 a = a.to("cuda")
                 p = model(i, txt, txt_encode, txt_len, ocr, ocrl)
-                try:
-                    _, idx = p.max(dim=1)
-                except Exception as e:
+                if p.dim() == 1:
                     p = torch.unsqueeze(p, 0)
 
                 p_scale = torch.sigmoid(p)
@@ -317,7 +315,8 @@ if __name__ == '__main__':
     CONFIG.txt_encoder = args.txt_encoder
     assert args.img_encoder in ['fc', 'alexnet', 'resnet', 'densenet', 'vit'], f"Error: Unknown image encoder (i.e. {args.img_encoder.lower()}) specified as argument for main.py, 'txt_encoder' must be one of following values: ['fc', 'alexnet', 'resnet', 'densenet', 'vit']"
     CONFIG.img_encoder = args.img_encoder
-    assert args.fusion in ['concat', 'concat_bigru', 'mult', 'mcb', 'transf'], f"Error: Unknown fusion method (i.e. {args.fusion.lower()})specified as argument for main.py, 'txt_encoder' must be one of following values: ['concat', 'concat_bigru', 'mult', 'mcb', 'transf']"
+    print(f"args.fusion is : {args.fusion}")
+    assert args.fusion in ['concat', 'concat_bigru', 'mult', 'mcb', 'transf'], f"Error: Unknown fusion method (i.e. {args.fusion.lower()})specified as argument for main.py, 'fusion' must be one of following values: ['concat', 'concat_bigru', 'mult', 'mcb', 'transf']"
     CONFIG.fusion_method = args.fusion
 
     # directories

@@ -68,11 +68,11 @@ class ConcatBiGRUFusion(FusionBase):
     def __init__(self, config):
         super().__init__(config)
         if config.img_encoder == "vit":
-            config.fusion_out_dim = 2*config.text_dim
+            config.fusion_out_dim = 2 * config.text_dim
             self.fusion_dim = config.text_dim
             self.num_mmc_units = config.text_dim
         else:
-            config.fusion_out_dim = 2*(config.text_dim + config.img_dim)
+            config.fusion_out_dim = 2 * (config.text_dim + config.img_dim)
             self.fusion_dim = config.text_dim + config.img_dim
             self.num_mmc_units = config.text_dim + config.img_dim
 
@@ -142,11 +142,11 @@ class MultiplicationFusion(FusionBase):
         self.transform_convs = nn.Sequential(*self.transform_convs)
 
         if config.img_encoder == "resnet":
-            self.lin1 = nn.Linear(config.img_dim, int(config.img_dim/8))
-            self.lin2 = nn.Linear(int(config.img_dim/8)*config.text_dim, config.img_dim + config.text_dim)
+            self.lin1 = nn.Linear(config.img_dim, int(config.img_dim / 8))
+            self.lin2 = nn.Linear(int(config.img_dim / 8) * config.text_dim, config.img_dim + config.text_dim)
         else:
-            self.lin1 = nn.Linear(config.img_dim, int(config.img_dim/2))
-            self.lin2 = nn.Linear(int(config.img_dim/2)*config.text_dim, config.img_dim + config.text_dim)
+            self.lin1 = nn.Linear(config.img_dim, int(config.img_dim / 2))
+            self.lin2 = nn.Linear(int(config.img_dim / 2) * config.text_dim, config.img_dim + config.text_dim)
 
     def forward(self, txt, img):
         # reshape and tile txt_feat
@@ -238,7 +238,12 @@ class MCBFusion(FusionBase):
         final_out = self.comp_layer2(txt, res_unsqueezed)
         final_out = final_out.squeeze()
         final_out = torch.sqrt(F.relu(final_out)) - torch.sqrt(F.relu(-final_out))  # square root
-        final_out = torch.nn.functional.normalize(final_out)
+        if final_out.dim() == 1:
+            final_out = torch.unsqueeze(final_out, 0)
+        try:
+            final_out = torch.nn.functional.normalize(final_out)
+        except Exception as e:
+            print(f"Exception because final_out size is {final_out.shape}")
 
         # final lin layer
         final_out = self.lin2(final_out)
@@ -269,6 +274,8 @@ class TransformerFusion(FusionBase):
         output_all_encoded_layers = False
         mm_feat = self.pre_fusion(txt, img, apply_pooling=False)
         mm_feat = mm_feat.squeeze()
+        if mm_feat.dim() == 2:
+            mm_feat = torch.unsqueeze(mm_feat, 0)
         attention_mask = torch.ones((mm_feat.shape[0], mm_feat.shape[2]), dtype=torch.long)
 
         # make sure that mm_feat%12 = 0 and extend attention with zeros
