@@ -1,5 +1,3 @@
-# ChartFC
-
 ### Intro to repository
 This repository contains code and data accompanying the paper "Reading and Reasoning over Chart Images for Evidence-based Automated Fact Checking." published at EACL 2023 (Findings).
 
