@@ -3,7 +3,7 @@
 ### Intro to repository
 This repository contains code and data accompanying the paper "Reading and Reasoning over Chart Images for Evidence-based Automated Fact Checking." published at EACL 2023 (Findings).
 
-### Structure of repo
+### Structure 
 The folder ./code contains all scripts to run the VL experiments as well as code for the ChartBERT model.
 The subfolder ./data/dataset_files contains the ChartFC dataset files as well as processed versions, e.g. for the different sequence generation approaches discussed in the paper. 
 
