@@ -18,7 +18,7 @@ https://emckclac-my.sharepoint.com/:u:/g/personal/k20116188_kcl_ac_uk/EUoa-BgJEw
 <div id="ref-akhtar2023" class="csl-entry">
 
 Akhtar, Mubashara, Oana Cocarascu, and Elena Simperl. 2023. *Reading and Reasoning over Chart Images for Evidence-based Automated Fact-Checking*. arXiv preprint arXiv:2301.11843.
-<https://arxiv.org/pdf/2301.11843>.
+<https://arxiv.org/pdf/2301.11843> (accepted to EACL 2023).
 
 </div>
 
